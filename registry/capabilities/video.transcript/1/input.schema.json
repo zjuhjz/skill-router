@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/video.transcript/1/input.schema.json",
+  "title": "video.transcript@1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "anyOf": [
+    { "required": ["url"] },
+    { "required": ["file"] }
+  ],
+  "properties": {
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "视频页面链接，或含链接的分享文案"
+    },
+    "file": {
+      "type": "string",
+      "minLength": 1,
+      "description": "本地音视频路径。相对路径相对路由器进程的工作目录。"
+    },
+    "platform": { "type": "string", "minLength": 1 },
+    "language": {
+      "type": "string",
+      "minLength": 1,
+      "description": "可选语言提示，例如 zh"
+    }
+  }
+}

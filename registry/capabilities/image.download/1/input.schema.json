@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/image.download/1/input.schema.json",
+  "title": "image.download@1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["url"],
+  "properties": {
+    "url": {
+      "type": "string",
+      "minLength": 1,
+      "description": "分享链接，或含链接的分享文案"
+    },
+    "platform": { "type": "string", "minLength": 1 }
+  }
+}

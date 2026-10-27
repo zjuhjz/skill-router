@@ -1,0 +1,23 @@
+skillcall: "0.1"
+id: example.faster-whisper
+version: 0.3.1
+name: 本地 faster-whisper
+author:
+  name: skill-router examples
+license: MIT
+provides:
+  - capability: video.transcript@1
+    platforms: [local, douyin, bilibili, kuaishou, xiaohongshu, weibo]
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py"]
+    timeout_s: 600
+    requires:
+      python: ["faster-whisper"]
+      network: true
+    cost: free
+    side_effects: [network]
+    health_check:
+      enabled: false
+warmup:
+  timeout_s: 900

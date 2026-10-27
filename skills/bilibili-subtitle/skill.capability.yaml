@@ -1,0 +1,29 @@
+skillcall: "0.1"
+id: example.bilibili-subtitle
+version: 0.3.3
+name: 哔哩哔哩字幕
+author:
+  name: skill-router examples
+license: MIT
+provides:
+  - capability: video.transcript@1
+    platforms: [bilibili]
+    priority: 10
+    url_patterns:
+      - 'https?://([a-z0-9-]+\.)?bilibili\.com/'
+      - 'https?://b23\.tv/'
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py"]
+    timeout_s: 40
+    requires:
+      optional_env: [BILIBILI_COOKIES]
+      python: ["requests>=2.31"]
+      network: true
+    cost: free
+    side_effects: [network]
+    health_check:
+      # No verified CC/AI canary. Home PC: BV16h411m7NG is public but has no
+      # track (UNSUPPORTED_URL, then faster-whisper). BV1bnfdBpEPs is 稿件不可见.
+      # BV1GJ411x7h7 is the download canary and also has no CC track.
+      enabled: false

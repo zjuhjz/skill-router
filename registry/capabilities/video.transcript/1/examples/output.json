@@ -1,0 +1,10 @@
+{
+  "language": "zh",
+  "script": "Hans",
+  "source": "platform_subtitle",
+  "text": "你好",
+  "segments": [
+    { "start_ms": 0, "end_ms": 1200, "text": "你好" }
+  ],
+  "meta": { "platform": "bilibili", "id": "BV16h411m7NG" }
+}

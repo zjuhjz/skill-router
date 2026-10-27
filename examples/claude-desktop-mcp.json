@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "skill-router": {
+      "command": "skillrouter",
+      "args": ["mcp"],
+      "env": {
+        "PYTHONUTF8": "1",
+        "PYTHONIOENCODING": "utf-8",
+        "SKILLROUTER_YES": "1"
+      }
+    }
+  }
+}

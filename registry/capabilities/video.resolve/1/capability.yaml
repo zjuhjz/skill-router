@@ -1,0 +1,10 @@
+id: video.resolve
+version: 1
+status: stable
+summary: 解析视频页面，返回元数据和媒体直链，不把文件落到磁盘。
+compliance: 仅限个人使用，一次只处理一条用户提供的链接。不提供批量抓取。
+routing:
+  platform_field: /platform
+  url_field: /url
+  extract_url_from_text: true
+output_rules: []

@@ -1,0 +1,71 @@
+# 错误码决定路由器是否换下一个 Skill，以及是否计入健康分。
+# 路由器按这些字段执行，不在代码里写死平台。
+version: 1
+codes:
+  INVALID_INPUT:
+    precheck: true
+    if_from_skill: UNSUPPORTED_URL
+    fallback: false
+    scored: false
+  UNSUPPORTED_URL:
+    class: unsupported
+    fallback: true
+    scored: false
+  NOT_FOUND:
+    class: not_found
+    fallback: true
+    confirm_different: 1
+    scored: false
+  NEED_AUTH:
+    fallback: true
+    scored: false
+    mark: missing_credentials
+  RATE_LIMITED:
+    fallback: true
+    scored: true
+    score: 0.6
+    cooldown: retry_after
+  GEO_BLOCKED:
+    fallback: true
+    scored: false
+    record_network: true
+  UPSTREAM_CHANGED:
+    fallback: true
+    scored: true
+    score: 0.0
+  UPSTREAM_ERROR:
+    fallback: true
+    scored: true
+    score: 0.6
+  TIMEOUT:
+    router_timeout: true
+    fallback: true
+    scored: true
+    score: 0.2
+  DEPENDENCY_MISSING:
+    exit_code: 3
+    fallback: true
+    scored: false
+    mark: not_ready
+  QUOTA_EXCEEDED:
+    fallback: true
+    scored: false
+  QUALITY_NOT_MET:
+    class: quality
+    fallback: true
+    scored: false
+    keep_degraded: true
+  INTERNAL:
+    default: true
+    fallback: true
+    scored: true
+    score: 0.2
+
+router_codes:
+  ALL_FAILED: {}
+  NEED_CONFIRM: {}
+  PAID_NOT_ALLOWED: {}
+  CIRCUIT_OPEN: {}
+  COOLDOWN: {}
+  NO_CANARY: {}
+  CANARY_EXPIRED: {}

@@ -1,0 +1,21 @@
+skillcall: "0.1"
+id: example.gemini-asr
+version: 0.3.1
+name: Gemini 语音转写
+author:
+  name: skill-router examples
+license: MIT
+provides:
+  - capability: video.transcript@1
+    platforms: [local, douyin, bilibili, kuaishou, xiaohongshu, weibo]
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py"]
+    timeout_s: 300
+    requires:
+      env: [GEMINI_API_KEY]
+      network: true
+    cost: paid
+    side_effects: [network, third_party_service]
+    health_check:
+      enabled: false

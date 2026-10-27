@@ -1,0 +1,49 @@
+# 平台 ID、主机名和公共体检链接。
+# 这是数据，不是路由器代码。canary 选长期存在的公开视频，至少两条。
+platforms:
+  douyin:
+    name: 抖音
+    hosts: [douyin.com, v.douyin.com, iesdouyin.com]
+    canary_urls:
+      - https://v.douyin.com/e3x2fjE/
+      - https://www.douyin.com/video/6894784055775071503
+  bilibili:
+    name: 哔哩哔哩
+    hosts: [bilibili.com, b23.tv, m.bilibili.com]
+    canary_urls:
+      - https://www.bilibili.com/video/BV1GJ411x7h7
+      - https://www.bilibili.com/video/BV1xx411c7mD
+  kuaishou:
+    name: 快手
+    hosts: [kuaishou.com, v.kuaishou.com, c.kuaishou.com, chenzhongtech.com, gifshow.com]
+    # 两条都是同一条已核验公开视频的不同入口。公开文档里的另一条 photo id
+    # 在构建机上没有返回作品数据，所以没有拿来当第二条独立样本。
+    canary_urls:
+      - https://www.kuaishou.com/short-video/3x3zxz4mjrsc8ke
+      - https://c.kuaishou.com/fw/photo/3x3zxz4mjrsc8ke
+    canary_verified: true
+    canary_note: "2026-10-20 构建机打开分享页，INIT_STATE 里有公开 mp4。photo 3x3zxz4mjrsc8ke。"
+  xiaohongshu:
+    name: 小红书
+    hosts: [xiaohongshu.com, xhslink.com, xhslink.cn]
+    id_from_url: '(?:explore|discovery/item|item)/([0-9a-fA-F]{16,32})'
+    canonical_page: "https://www.xiaohongshu.com/explore/{id}"
+    canary_urls:
+      - https://www.xiaohongshu.com/explore/649c46ab000000002702ad36
+      - https://www.xiaohongshu.com/discovery/item/649c46ab000000002702ad36
+    canary_verified: false
+    canary_note: "未验证。2026-10 家用网络打开这条 2023 年的笔记 id 仍被安全页拦住。公开笔记页需要分享链接上的 xsec_token。官方短链是 xhslink.com 和 xhslink.cn，路径有 /a、/m、/o，跳到 explore 或 discovery/item。不要把这条没带 token 的 canary 当成还能打开的样本，也不要把用户刚复制的短链写进仓库。"
+  weibo:
+    name: 微博
+    hosts: [weibo.com, weibo.cn, video.weibo.com, t.cn]
+    canary_urls:
+      - https://m.weibo.cn/status/5052484659707960
+      - https://weibo.com/tv/show/1034:5302868002144396
+    canary_verified: true
+    canary_note: "2026-10-20 构建机上 statuses/show 与 h5 component 都返回了公开 mp4。没有找到可长期引用的图片微博样本。"
+  local:
+    name: 本地文件
+    hosts: []
+    canary_urls: []
+    canary_verified: false
+    canary_note: "不是网站。video.transcript 只有本地文件、没有 URL 时使用这个平台 id。"

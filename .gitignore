@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+dist/
+build/
+cnvideo-downloads/
+cnvideo-doctor-media/
+cnvideo-doctor.json
+doctor-reports/
+*.part
+.DS_Store
+uploads/
+agent-tools/

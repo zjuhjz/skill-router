@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/video.download/1/output.schema.json",
+  "title": "video.download@1 output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["meta", "files"],
+  "properties": {
+    "meta": { "$ref": "#/$defs/meta" },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/file" }
+    },
+    "extra": { "type": "object" }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["platform", "id"],
+      "properties": {
+        "platform": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "author": { "type": ["string", "null"] },
+        "author_id": { "type": ["string", "null"] },
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "cover": { "type": ["string", "null"] },
+        "published_at": { "type": ["string", "null"] },
+        "page_url": { "type": ["string", "null"] },
+        "stats": { "type": ["object", "null"], "additionalProperties": true }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["path", "role", "size_bytes"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "enum": ["video", "audio", "muxed", "cover", "subtitle"] },
+        "size_bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string" },
+        "has_watermark": { "type": ["boolean", "null"] },
+        "width": { "type": ["integer", "null"] },
+        "height": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

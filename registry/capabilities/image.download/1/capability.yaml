@@ -1,0 +1,14 @@
+id: image.download
+version: 1
+status: stable
+summary: 把一条图文内容里的图片下载到本地。成功时至少有一张图片文件。
+compliance: 仅限个人使用，一次只处理一条用户提供的链接。不托管、不转载。
+routing:
+  platform_field: /platform
+  url_field: /url
+  extract_url_from_text: true
+output_rules:
+  - type: require_file_role
+    role: image
+    suffixes: [".jpg", ".jpeg", ".png", ".webp", ".gif"]
+    on_fail: QUALITY_NOT_MET

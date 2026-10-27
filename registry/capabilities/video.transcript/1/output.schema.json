@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/video.transcript/1/output.schema.json",
+  "title": "video.transcript@1 output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["language", "source", "text", "segments"],
+  "properties": {
+    "language": { "type": "string", "minLength": 1 },
+    "script": { "type": "string", "enum": ["Hans", "Hant", "Latn", "und"] },
+    "source": { "type": "string", "enum": ["platform_subtitle", "asr"] },
+    "text": { "type": "string" },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "required": ["start_ms", "end_ms", "text"],
+        "properties": {
+          "start_ms": { "type": "integer", "minimum": 0 },
+          "end_ms": { "type": "integer", "minimum": 0 },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "meta": { "type": "object", "additionalProperties": true }
+  }
+}

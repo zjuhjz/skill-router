@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "platform": "douyin",
+    "id": "6894784055775071503",
+    "title": "示例",
+    "author": "示例作者",
+    "duration_ms": 18134
+  },
+  "files": [
+    {
+      "path": "video.mp4",
+      "role": "muxed",
+      "size_bytes": 3833939,
+      "has_watermark": false,
+      "width": 720,
+      "height": 1280
+    }
+  ]
+}

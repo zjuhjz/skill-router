@@ -1,0 +1,48 @@
+skillcall: "0.1"
+id: example.bilibili-web
+version: 0.2.0
+name: B 站下载（Web API + WBI 签名）
+author:
+  name: skill-router examples
+license: MIT
+provides:
+  - capability: video.download@1
+    platforms: [bilibili]
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py", "download"]
+    timeout_s: 180
+    requires:
+      binaries: [ffmpeg]
+      optional_env: [BILIBILI_COOKIES]
+      python: ["requests>=2.31"]
+      network: true
+    cost: free
+    side_effects: [writes_files, network]
+    health_check:
+      use_platform_canaries: true
+      expect:
+        - "output.meta.platform == 'bilibili'"
+        - "output.files[0].size_bytes > 100000"
+      interval_h: 12
+  - capability: video.resolve@1
+    platforms: [bilibili]
+    metadata: rich
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py", "resolve"]
+    timeout_s: 40
+    requires:
+      optional_env: [BILIBILI_COOKIES]
+      python: ["requests>=2.31"]
+      network: true
+    cost: free
+    side_effects: [network]
+    health_check:
+      use_platform_canaries: true
+      samples:
+        - input: { url: "https://www.bilibili.com/video/BV1GJ411x7h7" }
+      expect:
+        - "output.meta.platform == 'bilibili'"
+        - "len(output.media) >= 1"
+      interval_h: 12

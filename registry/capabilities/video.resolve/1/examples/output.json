@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "platform": "douyin",
+    "id": "6894784055775071503",
+    "title": "示例",
+    "author": "示例作者",
+    "duration_ms": 18134,
+    "page_url": "https://www.douyin.com/video/6894784055775071503"
+  },
+  "media": [
+    {
+      "url": "https://www.iesdouyin.com/aweme/v1/play/?video_id=v0200fexample&ratio=720p&line=0",
+      "quality": "720p",
+      "container": "mp4",
+      "has_watermark": false,
+      "role": "muxed"
+    }
+  ]
+}

@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/video.resolve/1/output.schema.json",
+  "title": "video.resolve@1 output",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["meta", "media"],
+  "properties": {
+    "meta": { "$ref": "#/$defs/meta" },
+    "media": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/media" }
+    },
+    "extra": { "type": "object" }
+  },
+  "$defs": {
+    "meta": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["platform", "id"],
+      "properties": {
+        "platform": { "type": "string", "minLength": 1 },
+        "id": { "type": "string", "minLength": 1 },
+        "title": { "type": ["string", "null"] },
+        "description": { "type": ["string", "null"] },
+        "author": { "type": ["string", "null"] },
+        "author_id": { "type": ["string", "null"] },
+        "duration_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "cover": { "type": ["string", "null"] },
+        "published_at": { "type": ["string", "null"] },
+        "page_url": { "type": ["string", "null"] },
+        "stats": {
+          "type": ["object", "null"],
+          "additionalProperties": true,
+          "properties": {
+            "plays": { "type": ["integer", "null"] },
+            "likes": { "type": ["integer", "null"] },
+            "comments": { "type": ["integer", "null"] },
+            "shares": { "type": ["integer", "null"] },
+            "favorites": { "type": ["integer", "null"] }
+          }
+        }
+      }
+    },
+    "media": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "minLength": 1 },
+        "quality": { "type": ["string", "null"] },
+        "container": { "type": ["string", "null"] },
+        "has_watermark": { "type": ["boolean", "null"] },
+        "role": { "type": ["string", "null"], "enum": ["video", "audio", "muxed", "cover", "subtitle", null] },
+        "width": { "type": ["integer", "null"] },
+        "height": { "type": ["integer", "null"] },
+        "bitrate": { "type": ["integer", "null"] },
+        "extra_urls": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "allow_paid": false,
+  "pin": [],
+  "disabled": [],
+  "max_attempts": 4,
+  "max_total_s": 300,
+  "lazy_doctor": true,
+  "network": { "kind": "unknown", "region": null }
+}

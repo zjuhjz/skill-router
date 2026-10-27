@@ -1,0 +1,26 @@
+id: video.download
+version: 1
+status: stable
+summary: 把一条视频下载到本地文件。成功时必须给出至少一个音画合一的文件。
+compliance: 仅限个人使用，一次只处理一条用户提供的链接。不托管、不转载。
+routing:
+  platform_field: /platform
+  url_field: /url
+  extract_url_from_text: true
+output_rules:
+  - type: require_file_role
+    role: muxed
+    suffixes: [".mp4", ".mkv", ".webm"]
+    on_fail: QUALITY_NOT_MET
+  - type: input_flag_forbids_field
+    flag: require_no_watermark
+    role: muxed
+    field: has_watermark
+    forbidden: true
+    on_fail: QUALITY_NOT_MET
+  - type: input_number_minimum
+    input: min_height
+    role: muxed
+    field: height
+    missing: ignore
+    on_fail: QUALITY_NOT_MET
