@@ -32,7 +32,7 @@ server = MCPServer(
     name="list_capabilities",
     description=(
         "List capabilities the registry publishes and the installed Skills that provide them, "
-        "including platform, health, cost, and which credential names are required."
+        "including platform, runtime health, evaluation evidence, cost, and required credential names."
     ),
     structured_output=False,
 )

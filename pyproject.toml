@@ -42,6 +42,7 @@ packages = ["src/skillrouter"]
 [tool.hatch.build.targets.wheel.force-include]
 "packages/capability-spec/registry" = "skillrouter/bundled_registry"
 "packages/capability-spec/schemas" = "skillrouter/bundled_schemas"
+"packages/skill-eval/schemas/report.schema.json" = "skillrouter/bundled_eval_schemas/report.schema.json"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

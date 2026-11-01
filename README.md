@@ -168,6 +168,27 @@ Skill 在声明里写出变量名，不等于它能读到这个变量。值放�
 
 免费 Skill 排在付费前面。付费和按量计费默认不调用，除非 `allow_paid` 或 `--allow-paid`。
 
+## 评测证据
+
+Router 可以读取 `skill-eval.report.v1`，并在 `list --json` 中把适用证据附到对应 Skill；长期 Evaluation Evidence 与短期 Runtime Health 分开保存和展示。当前版本只接入和展示证据，不使用它改变默认排序。
+
+显式校验一份报告或包含多份报告的目录：
+
+```bash
+skillrouter evidence --report report.json
+skillrouter evidence --report ./benchmark-results
+```
+
+持续加载报告可以在 `~/.skillrouter/config.json` 中设置 `eval_reports`，也可以使用按系统路径分隔符拆分的 `SKILLROUTER_EVAL_REPORTS`：
+
+```json
+{
+  "eval_reports": ["./benchmark-results"]
+}
+```
+
+只有 Implementation ID、版本、内容 SHA-256 和 Capability 全部匹配时，报告才标记为 `applicable`。失效的版本或内容不会进入候选证据；`skillrouter evidence` 会给出 `VERSION_MISMATCH`、`DIGEST_MISMATCH` 等原因。报告内容会通过 Router wheel 内置的 Report Schema 校验。
+
 ## Windows
 
 帮助文字是 ASCII。PowerShell 5 截获外部程序输出时按 OEM 代码页解码，中文帮助会乱码；JSON 结果仍然是 UTF-8。交互窗口里看中文标题，先让控制台使用 UTF-8：

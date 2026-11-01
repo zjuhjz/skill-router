@@ -176,13 +176,13 @@ remote_agent
 - 从 `packages/capability-spec/registry/` 读取开发期 Registry。
 - Router wheel 继续内置 Registry 与 Schema 快照，保持离线工作。
 - 现有 Manifest 无需修改并通过外部 Spec 校验。
-- 尚未消费 `skill-eval.report.v1`；默认路由行为没有改变。
+- 已可选读取并校验 `skill-eval.report.v1`；只有 Implementation ID、版本、内容 Digest 和 Capability 全部匹配的证据才会附到 `list` 结果。Evidence Loader 与 Runtime Health 存储完全独立，默认路由行为仍未改变。
 
 ### 3.4 当前验证基线
 
 - Python：3.12.16，`.venv`。
 - `pip check`：无依赖冲突。
-- Router/集成非 live 测试：87 passed、1 skipped；8 个 live 测试按默认配置未运行。
+- Router/集成非 live 测试：90 passed、1 skipped；8 个 live 测试按默认配置未运行。
 - 独立包测试：20 passed；Spec Conformance 覆盖 5 个 Capability、11 个示例，Router 的 10 个 Manifest/19 个 Provision 和 Eval 的 2 个示例 Implementation/2 个 Provision 分别校验。
 - `capability-spec`、`skill-eval`、`skill-router` 均已成功构建 wheel；前两个同时验证了 sdist。
 
@@ -712,7 +712,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 第 7～8 周：Router 接入 Eval
 
-状态：未开始。Router 当前只完成外部 Spec 接入，尚未读取 Eval Report。
+状态：**进行中**。Router 已完成 Eval Report Schema 内置、配置/环境变量/CLI 加载、严格适用性检查和 `list` 证据展示；证据暂不参与默认排序。下一步定义显式启用的 Eval-aware Policy 和选择理由。
 
 目标：
 
@@ -886,8 +886,8 @@ skill-router    30%
 3. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
 4. 用 `faster-whisper` 和 `gemini-asr` 运行首个转写 Benchmark；托管模型继续使用 BYOK。
 5. 基于已验证的 Composite Action 增加 README Badge 与独立示例项目（已完成），下一步准备版本发布说明和外部仓库接入示例。
-6. Router 在不改变现有默认行为的情况下，可选读取并校验 Eval Report。
-7. 增加 Eval-aware Ranking、Policy 和选择理由；Evaluation Evidence 与 Runtime Health 保持独立。
+6. 为已接入的 Eval Evidence 定义显式启用、可回退到现有行为的 Route Policy。
+7. 增加 Eval-aware Ranking 和选择理由；Evaluation Evidence 与 Runtime Health 保持独立。
 
 ## 17. 给后续 AI 会话的工作指令
 

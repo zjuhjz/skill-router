@@ -22,6 +22,7 @@ def config_path() -> Path:
 def load_config() -> dict:
     data = {
         "extra_skill_paths": [],
+        "eval_reports": [],
         "pin": [],
         "priority": {},
         "disabled": [],

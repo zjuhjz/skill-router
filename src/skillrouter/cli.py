@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 
 from skillrouter.engine import describe_capability, doctor, invoke, list_capabilities, restore, warmup
+from skillrouter.evidence import evidence_summary
 from skillrouter.utf8 import force_utf8
 
 
@@ -53,6 +54,9 @@ def _build() -> argparse.ArgumentParser:
 
     sub.add_parser("mcp", help="serve the MCP server on stdio")
 
+    evidence = sub.add_parser("evidence", help="validate and inspect skill-eval JSON reports")
+    evidence.add_argument("--report", action="append", type=Path, help="report file or directory; repeatable")
+
     back = sub.add_parser("restore", help="put a deprecated skill back into ranking")
     back.add_argument("skill_id")
     back.add_argument("capability", nargs="?")
@@ -68,9 +72,10 @@ def _list_text(payload: dict) -> str:
             lines.append(f"  {platform['id']}  health={platform.get('health')}")
             for skill in platform.get("skills") or []:
                 needs = ",".join(skill.get("needs_env") or []) or "-"
+                evidence_count = len(skill.get("evaluation") or [])
                 lines.append(
                     f"    {skill['id']} {skill.get('version')} {skill.get('cost')} "
-                    f"{skill.get('health')} needs={needs}"
+                    f"{skill.get('health')} needs={needs} evidence={evidence_count}"
                 )
         if not item.get("platforms"):
             lines.append("  （没有已安装的 Skill）")
@@ -138,6 +143,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.cmd == "describe":
         payload = describe_capability(args.capability)
+        _print_json(payload)
+        return 0 if payload.get("ok") else 1
+    if args.cmd == "evidence":
+        payload = evidence_summary(args.report if args.report else None)
         _print_json(payload)
         return 0 if payload.get("ok") else 1
     if args.cmd == "restore":

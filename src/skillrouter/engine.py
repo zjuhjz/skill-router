@@ -30,6 +30,7 @@ from skillrouter.creds import (
     redact_tree,
 )
 from skillrouter.discover import Skill, discover, discovery_roots
+from skillrouter.evidence import load_evidence, public_record
 from skillrouter.expr import all_expect
 from skillrouter.paths import downloads_dir, load_config, logs_dir, runs_dir
 from skillrouter.proc import http_allowed, run_command, run_http
@@ -996,6 +997,8 @@ def _url_hash(url: str | None) -> str | None:
 def list_capabilities() -> dict[str, Any]:
     skills, errors = discover()
     reconcile_skills(skills)
+    evidence_records, evidence_errors = load_evidence()
+    skills_by_id = {skill.id: skill for skill in skills}
     state = load_state()
     grouped: dict[str, dict[str, Any]] = {}
     registry = load_registry()
@@ -1032,6 +1035,14 @@ def list_capabilities() -> dict[str, Any]:
                         "skills": [],
                     },
                 )
+                evaluation = []
+                for record in evidence_records:
+                    report = record["report"]
+                    if report["subject"]["id"] != skill.id or report["capability"] != provision.capability:
+                        continue
+                    view_record = public_record(record, skills_by_id)
+                    if view_record["applicable"]:
+                        evaluation.append(view_record)
                 slot["skills"].append(
                     {
                         "id": skill.id,
@@ -1043,6 +1054,7 @@ def list_capabilities() -> dict[str, Any]:
                         "needs_env": [str(item) for item in (provision.requires.get("env") or [])],
                         "optional_env": [str(item) for item in (provision.requires.get("optional_env") or [])],
                         "side_effects": provision.side_effects,
+                        "evaluation": evaluation,
                     }
                 )
     capabilities = []
@@ -1058,7 +1070,12 @@ def list_capabilities() -> dict[str, Any]:
             platforms.append(platform)
         item["platforms"] = platforms
         capabilities.append(item)
-    return {"ok": True, "capabilities": capabilities, "discovery_errors": errors}
+    return {
+        "ok": True,
+        "capabilities": capabilities,
+        "discovery_errors": errors,
+        "evidence_errors": evidence_errors,
+    }
 
 
 def describe_capability(capability: str) -> dict[str, Any]:
