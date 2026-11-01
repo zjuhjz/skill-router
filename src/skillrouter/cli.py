@@ -39,6 +39,10 @@ def _build() -> argparse.ArgumentParser:
     call.add_argument("--yes", action="store_true", help="trust skills that ask for confirmation")
     call.add_argument("--prefer", dest="prefer_skill")
     call.add_argument("--use-evidence", action="store_true", help="opt in to comparable skill-eval evidence")
+    call.add_argument("--min-task-success", type=float, help="soft evidence gate from 0 to 1")
+    call.add_argument("--max-p95-ms", type=float, help="soft evidence P95 latency gate")
+    call.add_argument("--max-cost-usd", type=float, help="soft evidence average cost gate")
+    call.add_argument("--evidence-aggregation", choices=["conservative", "latest"])
     call.add_argument("--max-attempts", type=int)
 
     health = sub.add_parser("doctor", help="run public health-check URLs")
@@ -189,6 +193,14 @@ def main(argv: list[str] | None = None) -> int:
         options["prefer_skill"] = args.prefer_skill
     if args.use_evidence:
         options["use_evidence"] = True
+    if args.min_task_success is not None:
+        options["minimum_task_success_rate"] = args.min_task_success
+    if args.max_p95_ms is not None:
+        options["maximum_p95_latency_ms"] = args.max_p95_ms
+    if args.max_cost_usd is not None:
+        options["maximum_average_cost_usd"] = args.max_cost_usd
+    if args.evidence_aggregation:
+        options["evidence_aggregation"] = args.evidence_aggregation
     if args.max_attempts is not None:
         options["max_attempts"] = args.max_attempts
     payload = invoke(args.capability, raw, options=options, yes=args.yes)

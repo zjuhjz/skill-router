@@ -22,6 +22,7 @@ def _report(
     verified_at: str = "2026-11-01T00:00:00Z",
     task_success_rate: float = 1,
     p95_latency_ms: float = 10,
+    average_cost_usd: float | None = None,
     suite_digest: str = "b" * 64,
 ) -> Path:
     report = {
@@ -41,7 +42,7 @@ def _report(
             "task_success_rate": task_success_rate,
             "p50_latency_ms": 10,
             "p95_latency_ms": p95_latency_ms,
-            "average_cost_usd": None,
+            "average_cost_usd": average_cost_usd,
             "user_outcome_score": None,
             "metrics": {},
         },
@@ -231,3 +232,152 @@ def test_evaluation_never_overrides_free_before_paid(skills_root, tmp_path, monk
     )
     assert result["served_by"]["skill"] == "zzz.free"
     assert result["routing"]["policy"] == "evaluation-aware"
+
+
+def test_conservative_aggregation_uses_worst_cross_environment_result(
+    skills_root, tmp_path, monkeypatch
+):
+    make_skill(skills_root, "aaa.variable", {"action": "ok", "id": "1"})
+    make_skill(skills_root, "zzz.stable", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "variable-old.json",
+        "aaa.variable",
+        skills["aaa.variable"].version,
+        skills["aaa.variable"].content_hash,
+        verified_at="2026-10-31T00:00:00Z",
+        task_success_rate=0.4,
+        p95_latency_ms=100,
+    )
+    _report(
+        reports / "variable-new.json",
+        "aaa.variable",
+        skills["aaa.variable"].version,
+        skills["aaa.variable"].content_hash,
+        verified_at="2026-11-01T00:00:00Z",
+        task_success_rate=1,
+        p95_latency_ms=10,
+    )
+    _report(
+        reports / "stable.json",
+        "zzz.stable",
+        skills["zzz.stable"].version,
+        skills["zzz.stable"].content_hash,
+        task_success_rate=0.8,
+        p95_latency_ms=50,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    conservative = invoke("video.download", {"url": URL}, options={"use_evidence": True}, yes=True)
+    assert conservative["served_by"]["skill"] == "zzz.stable"
+    variable = next(
+        item for item in conservative["routing"]["candidates"] if item["skill"] == "aaa.variable"
+    )
+    assert variable["evidence"]["task_success_rate"] == 0.4
+    assert variable["evidence"]["p95_latency_ms"] == 100
+    assert variable["evidence"]["report_count"] == 2
+
+    latest = invoke(
+        "video.download",
+        {"url": URL},
+        options={"use_evidence": True, "evidence_aggregation": "latest"},
+        yes=True,
+    )
+    assert latest["served_by"]["skill"] == "aaa.variable"
+    assert latest["routing"]["evaluation"]["aggregation"] == "latest"
+
+
+def test_evidence_limits_demote_candidates_but_keep_them_for_fallback(skills_root, tmp_path, monkeypatch):
+    make_skill(
+        skills_root,
+        "aaa.within-limits",
+        {"action": "error", "code": "UPSTREAM_ERROR", "message": "temporarily down"},
+    )
+    make_skill(skills_root, "zzz.too-slow", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "within.json",
+        "aaa.within-limits",
+        skills["aaa.within-limits"].version,
+        skills["aaa.within-limits"].content_hash,
+        task_success_rate=0.9,
+        p95_latency_ms=50,
+        average_cost_usd=0.01,
+    )
+    _report(
+        reports / "slow.json",
+        "zzz.too-slow",
+        skills["zzz.too-slow"].version,
+        skills["zzz.too-slow"].content_hash,
+        task_success_rate=1,
+        p95_latency_ms=200,
+        average_cost_usd=0.02,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    result = invoke(
+        "video.download",
+        {"url": URL},
+        options={
+            "use_evidence": True,
+            "minimum_task_success_rate": 0.8,
+            "maximum_p95_latency_ms": 100,
+            "maximum_average_cost_usd": 0.05,
+        },
+        yes=True,
+    )
+    assert result["served_by"]["skill"] == "zzz.too-slow"
+    assert [attempt["skill"] for attempt in result["attempts"]] == [
+        "aaa.within-limits",
+        "zzz.too-slow",
+    ]
+    assert result["routing"]["fallback"] is True
+    slow = next(item for item in result["routing"]["candidates"] if item["skill"] == "zzz.too-slow")
+    assert "P95_LATENCY_ABOVE_MAXIMUM" in slow["reasons"][-1]
+    assert result["routing"]["evaluation"]["eligible_candidate_count"] == 1
+
+
+def test_malformed_optional_policy_values_fall_back_to_safe_defaults(
+    skills_root, isolate_router, tmp_path, monkeypatch
+):
+    make_skill(skills_root, "aaa.lower", {"action": "ok", "id": "1"})
+    make_skill(skills_root, "zzz.higher", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "lower.json",
+        "aaa.lower",
+        skills["aaa.lower"].version,
+        skills["aaa.lower"].content_hash,
+        task_success_rate=0.5,
+    )
+    _report(
+        reports / "higher.json",
+        "zzz.higher",
+        skills["zzz.higher"].version,
+        skills["zzz.higher"].content_hash,
+        task_success_rate=1,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+    (isolate_router / "config.json").write_text(
+        json.dumps(
+            {
+                "evaluation_policy": {
+                    "enabled": True,
+                    "max_age_days": "invalid",
+                    "minimum_candidates": "invalid",
+                    "aggregation": "invalid",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = invoke("video.download", {"url": URL}, yes=True)
+    assert result["served_by"]["skill"] == "zzz.higher"
+    assert result["routing"]["evaluation"]["aggregation"] == "conservative"

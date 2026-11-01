@@ -188,17 +188,26 @@ skillrouter evidence --report ./benchmark-results
     "enabled": false,
     "max_age_days": 90,
     "minimum_trust": "self-tested",
-    "minimum_candidates": 2
+    "minimum_candidates": 2,
+    "aggregation": "conservative",
+    "minimum_task_success_rate": 0.8,
+    "maximum_p95_latency_ms": 5000,
+    "maximum_average_cost_usd": 0.05
   }
 }
 ```
 
 只有 Implementation ID、版本、内容 SHA-256 和 Capability 全部匹配时，报告才标记为 `applicable`。失效的版本或内容不会进入候选证据；`skillrouter evidence` 会给出 `VERSION_MISMATCH`、`DIGEST_MISMATCH` 等原因。报告内容会通过 Router wheel 内置的 Report Schema 校验。
 
-Eval-aware Policy 默认只比较 90 天内、满足最低信任等级的 Offline Report，并要求至少两个候选使用同一个 Suite Digest；条件不满足时自动回退到原排序。显式 `prefer_skill`、pin、免费优先、平台覆盖和 Runtime Health 始终排在 Evidence 之前。同层候选再按 Task Success、Execution Success 和 P95 延迟排序：
+Eval-aware Policy 默认只比较 90 天内、满足最低信任等级的 Offline Report，并要求至少两个候选使用同一个 Suite Digest；条件不满足时自动回退到原排序。跨环境默认采用 `conservative` 聚合：成功率取最低值，延迟和成本取最高值；也可以选择 `latest`。质量、延迟或成本不满足门槛的候选会降级为 fallback，不会直接删除。
+
+显式 `prefer_skill`、pin、免费优先、平台覆盖和 Runtime Health 始终排在 Evidence 之前。同层候选再按 Task Success、Execution Success、平均成本和 P95 延迟排序：
 
 ```bash
 skillrouter invoke video.download --url "https://..." --use-evidence --yes
+skillrouter invoke video.download --url "https://..." --use-evidence \
+  --min-task-success 0.8 --max-p95-ms 5000 --max-cost-usd 0.05 \
+  --evidence-aggregation conservative --yes
 ```
 
 ## Windows

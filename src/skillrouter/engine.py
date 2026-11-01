@@ -1271,12 +1271,46 @@ def _evaluation_policy(options: dict, cfg: dict) -> dict[str, Any]:
     minimum_trust = str(configured.get("minimum_trust") or "self-tested")
     if minimum_trust not in _TRUST_SCORE:
         minimum_trust = "self-tested"
+    aggregation = str(options.get("evidence_aggregation", configured.get("aggregation") or "conservative"))
+    if aggregation not in {"conservative", "latest"}:
+        aggregation = "conservative"
+
+    def nonnegative_float(value: object, default: float) -> float:
+        try:
+            return max(0.0, float(value))
+        except (TypeError, ValueError):
+            return default
+
+    def positive_int(value: object, default: int) -> int:
+        try:
+            return max(1, int(value))
+        except (TypeError, ValueError):
+            return default
+
+    def optional_limit(option_name: str, config_name: str) -> float | None:
+        value = options.get(option_name, configured.get(config_name))
+        if value is None or value == "":
+            return None
+        try:
+            return max(0.0, float(value))
+        except (TypeError, ValueError):
+            return None
+
     return {
         "enabled": enabled,
-        "max_age_days": max(0.0, float(configured.get("max_age_days", 90))),
+        "max_age_days": nonnegative_float(configured.get("max_age_days", 90), 90),
         "minimum_trust": minimum_trust,
-        "minimum_candidates": max(1, int(configured.get("minimum_candidates", 2))),
+        "minimum_candidates": positive_int(configured.get("minimum_candidates", 2), 2),
         "suite_id": str(configured.get("suite_id") or "").strip() or None,
+        "aggregation": aggregation,
+        "minimum_task_success_rate": min(
+            1.0,
+            optional_limit("minimum_task_success_rate", "minimum_task_success_rate") or 0.0,
+        ),
+        "maximum_p95_latency_ms": optional_limit("maximum_p95_latency_ms", "maximum_p95_latency_ms"),
+        "maximum_average_cost_usd": optional_limit(
+            "maximum_average_cost_usd", "maximum_average_cost_usd"
+        ),
     }
 
 
@@ -1285,6 +1319,62 @@ def _verified_timestamp(value: object) -> float:
         return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
     except ValueError:
         return 0.0
+
+
+def _aggregate_evidence(choices: list[dict], strategy: str) -> dict:
+    if strategy == "latest":
+        selected = max(choices, key=lambda view: _verified_timestamp(view["verified_at"]))
+        view = copy.deepcopy(selected)
+        view["report_count"] = 1
+        view["environments"] = [selected["environment"]]
+        return view
+    latest = max(choices, key=lambda view: _verified_timestamp(view["verified_at"]))
+    view = copy.deepcopy(latest)
+    results = view["results"]
+    results["runs"] = sum(int(item["results"]["runs"]) for item in choices)
+    results["task_success_rate"] = min(float(item["results"]["task_success_rate"]) for item in choices)
+    results["execution_success_rate"] = min(
+        float(item["results"]["execution_success_rate"]) for item in choices
+    )
+    for name in ("p50_latency_ms", "p95_latency_ms", "average_cost_usd"):
+        measured = [float(item["results"][name]) for item in choices if item["results"].get(name) is not None]
+        results[name] = max(measured) if measured else None
+    outcomes = [
+        float(item["results"]["user_outcome_score"])
+        for item in choices
+        if item["results"].get("user_outcome_score") is not None
+    ]
+    results["user_outcome_score"] = min(outcomes) if outcomes else None
+    weakest = min(choices, key=lambda item: _TRUST_SCORE.get(item["trust"]["level"], -1))["trust"]
+    issuers = sorted({str(item["trust"]["issuer"]) for item in choices})
+    view["trust"] = {
+        "level": weakest["level"],
+        "issuer": issuers[0] if len(issuers) == 1 else "multiple",
+    }
+    view["verified_at"] = latest["verified_at"]
+    view["report_count"] = len(choices)
+    view["environments"] = [item["environment"] for item in choices]
+    return view
+
+
+def _evidence_gate_reasons(view: dict, policy: dict[str, Any]) -> list[str]:
+    results = view["results"]
+    reasons = []
+    if float(results["task_success_rate"]) < float(policy["minimum_task_success_rate"]):
+        reasons.append("TASK_SUCCESS_BELOW_MINIMUM")
+    maximum_p95 = policy["maximum_p95_latency_ms"]
+    if maximum_p95 is not None:
+        if results.get("p95_latency_ms") is None:
+            reasons.append("P95_LATENCY_NOT_MEASURED")
+        elif float(results["p95_latency_ms"]) > float(maximum_p95):
+            reasons.append("P95_LATENCY_ABOVE_MAXIMUM")
+    maximum_cost = policy["maximum_average_cost_usd"]
+    if maximum_cost is not None:
+        if results.get("average_cost_usd") is None:
+            reasons.append("AVERAGE_COST_NOT_MEASURED")
+        elif float(results["average_cost_usd"]) > float(maximum_cost):
+            reasons.append("AVERAGE_COST_ABOVE_MAXIMUM")
+    return reasons
 
 
 def _apply_evaluation_evidence(
@@ -1329,14 +1419,24 @@ def _apply_evaluation_evidence(
     for item in runnable:
         choices = [view for candidate, view in pairs if candidate is item]
         if choices:
-            item["evaluation"] = max(
-                choices,
-                key=lambda view: (
-                    _TRUST_SCORE.get(view["trust"]["level"], -1),
-                    _verified_timestamp(view["verified_at"]),
-                ),
-            )
+            aggregated = _aggregate_evidence(choices, policy["aggregation"])
+            rejected = _evidence_gate_reasons(aggregated, policy)
+            if rejected:
+                item["evaluation_rejections"] = rejected
+            else:
+                item["evaluation"] = aggregated
     first_view = pairs[0][1]
+    eligible_count = sum(1 for item in runnable if isinstance(item.get("evaluation"), dict))
+    if eligible_count == 0:
+        context.update(
+            {
+                "reason": "NO_CANDIDATE_MEETS_EVIDENCE_LIMITS",
+                "candidate_count": candidate_count,
+                "eligible_candidate_count": 0,
+                "aggregation": policy["aggregation"],
+            }
+        )
+        return context
     context.update(
         {
             "applied": True,
@@ -1346,6 +1446,13 @@ def _apply_evaluation_evidence(
                 "digest": digest,
             },
             "candidate_count": candidate_count,
+            "eligible_candidate_count": eligible_count,
+            "aggregation": policy["aggregation"],
+            "limits": {
+                "minimum_task_success_rate": policy["minimum_task_success_rate"],
+                "maximum_p95_latency_ms": policy["maximum_p95_latency_ms"],
+                "maximum_average_cost_usd": policy["maximum_average_cost_usd"],
+            },
         }
     )
     return context
@@ -1357,10 +1464,12 @@ def _evaluation_rank(item: dict) -> tuple:
         return (1, 0.0, 0.0, float("inf"), 0)
     results = view["results"]
     p95 = results.get("p95_latency_ms")
+    average_cost = results.get("average_cost_usd")
     return (
         0,
         -float(results.get("task_success_rate") or 0),
         -float(results.get("execution_success_rate") or 0),
+        float(average_cost) if average_cost is not None else float("inf"),
         float(p95) if p95 is not None else float("inf"),
         -_TRUST_SCORE.get(view["trust"]["level"], 0),
     )
@@ -1392,9 +1501,14 @@ def _routing_context(ranked: list[dict], evaluation: dict[str, Any], *, prefer: 
                 "task_success_rate": results["task_success_rate"],
                 "execution_success_rate": results["execution_success_rate"],
                 "p95_latency_ms": results.get("p95_latency_ms"),
+                "average_cost_usd": results.get("average_cost_usd"),
                 "trust": view["trust"],
                 "verified_at": view["verified_at"],
+                "report_count": view.get("report_count", 1),
             }
+        rejected = item.get("evaluation_rejections") or []
+        if rejected:
+            reasons.append("evidence rejected: " + ",".join(str(reason) for reason in rejected))
         candidates.append(
             {
                 "rank": index,
