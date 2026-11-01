@@ -1,5 +1,7 @@
 # skill-eval
 
+[![unit](https://github.com/zjuhjz/skill-router/actions/workflows/unit.yml/badge.svg)](https://github.com/zjuhjz/skill-router/actions/workflows/unit.yml)
+
 Local-first, bring-your-own-environment evaluation for skillcall
 implementations. The initial v0.1 slice supports local command implementations
 and remote MCP Streamable HTTP tools,
@@ -34,7 +36,7 @@ The repository includes a composite action that installs `capability-spec` and
 views as a workflow artifact:
 
 ```yaml
-- uses: actions/setup-python@v5
+- uses: actions/setup-python@v7
   with:
     python-version: "3.12"
 - uses: owner/skill-router/packages/skill-eval@ref
@@ -48,6 +50,9 @@ views as a workflow artifact:
 The action executes implementation code on the caller's GitHub-hosted or
 self-hosted runner. It does not send the implementation or credentials to a
 Skillcall service.
+
+A complete Tesseract example is available in
+[`examples/github-action.yml`](examples/github-action.yml).
 
 Supported assertions are `exact`, `contains`, `regex`, `numeric_tolerance`,
 `set_overlap`, `exists`, `cer_at_most`, and `wer_at_most`. Assertion paths are JSON Pointers relative to the

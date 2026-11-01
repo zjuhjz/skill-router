@@ -1,0 +1,23 @@
+name: Evaluate OCR implementation
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install Tesseract
+        run: sudo apt-get update && sudo apt-get install --yes tesseract-ocr
+      - name: Evaluate image.ocr
+        uses: zjuhjz/skill-router/packages/skill-eval@main
+        with:
+          implementation: packages/skill-eval/implementations/tesseract-ocr
+          suite: packages/skill-eval/benchmarks/image-ocr/offline.yaml
+          mode: offline
+          artifact-name: image-ocr-evidence

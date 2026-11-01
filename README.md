@@ -1,5 +1,7 @@
 # skill-router
 
+[![unit](https://github.com/zjuhjz/skill-router/actions/workflows/unit.yml/badge.svg)](https://github.com/zjuhjz/skill-router/actions/workflows/unit.yml)
+
 **skill-router** 是统一的 Skill 调用库，协议名 **skillcall**，这个仓库是它的参考实现。它给 AI 助手做通用的 Skill 分发：助手不绑定某一个平台脚本，只按能力名调用。中文短视频平台（抖音、哔哩哔哩、快手、小红书、微博）是第一批用例。
 
 AI 向路由器要一个能力（例如 `video.download@1`），路由器找出声明了这个能力的 Skill，按成本、覆盖面、健康和熔断排序，用 stdin/stdout JSON 调用其中一个。失败时按错误码决定要不要换下一个。

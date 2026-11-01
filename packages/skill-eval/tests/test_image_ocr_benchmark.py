@@ -80,8 +80,18 @@ def test_paddleocr_v3_result_parser_normalizes_blocks():
 
 def test_checked_in_ocr_reports_are_valid_and_comparison_is_current():
     results = BENCHMARK / "results"
-    reports = load_reports([results / "tesseract-ocr.json", results / "paddleocr.json"])
+    reports = load_reports(
+        [
+            results / "tesseract-ocr.json",
+            results / "paddleocr.json",
+            results / "tesseract-ocr-linux-x64.json",
+        ]
+    )
     suite_digest = "sha256:" + hashlib.sha256((BENCHMARK / "offline.yaml").read_bytes()).hexdigest()
     assert all(report["suite"]["digest"] == suite_digest for report in reports)
-    expected = render_comparison(reports)
+    ci_report = reports[2]
+    assert ci_report["environment"]["os"] == "linux"
+    assert ci_report["environment"]["arch"] == "x86_64"
+    assert ci_report["results"]["task_success_rate"] == 1
+    expected = render_comparison(reports[:2])
     assert (results / "COMPARISON.md").read_text(encoding="utf-8") == expected

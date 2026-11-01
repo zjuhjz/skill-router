@@ -294,4 +294,4 @@ def test_github_action_emits_all_report_formats():
     upload = next(
         step for step in action["runs"]["steps"] if step["name"] == "Upload evaluation evidence"
     )
-    assert upload["uses"] == "actions/upload-artifact@v4"
+    assert upload["uses"] == "actions/upload-artifact@v7"

@@ -148,7 +148,7 @@ remote_agent
 - Execution Success、Task Success、User Outcome 分离；未测量的 User Outcome 明确为 `null`。
 - P50/P95 延迟统计、JSON/Markdown/JUnit Report 和本地 `self-tested` 可信等级；三种格式由同一份标准 JSON Report 派生，不重复执行 Implementation。
 - `skill-eval compare` 可校验多个标准 JSON Report 的 Capability 与 Suite Digest，并生成静态 Markdown 对比页。
-- Composite GitHub Action 可在调用方 Runner 安装两个独立包、执行指定 Suite，并上传 JSON/Markdown/JUnit 三种证据；仓库 CI 已加入 Ubuntu/Tesseract 的 `image.ocr` 实跑任务。
+- Composite GitHub Action 可在调用方 Runner 安装两个独立包、执行指定 Suite，并上传 JSON/Markdown/JUnit 三种证据；仓库 CI 已在真实 Ubuntu/Tesseract Runner 完成 `image.ocr` 实跑，Linux 标准 JSON 证据已固化到 Benchmark 目录。
 - wheel 和 sdist 构建验证，以及使用假 Command Implementation 的端到端测试。
 
 尚未完成：
@@ -696,7 +696,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 第 6 周：GitHub Action 与第一次公开发布
 
-状态：**进行中**。Composite GitHub Action、三格式 Artifact 上传和 Ubuntu/Tesseract OCR Benchmark 工作流已加入，并在全新本地 Python 3.12 环境模拟通过；仍需在真实 GitHub Runner 验证、增加 Badge 和公开示例。
+状态：**进行中**。Composite GitHub Action、三格式 Artifact 上传、CI Badge 和可复制示例已加入；Ubuntu/Tesseract OCR Benchmark 已在真实 GitHub-hosted Linux x86_64 Runner 运行成功，下载的 Artifact 通过 Report Schema 校验。仍需正式转写 Benchmark 和第一次公开版本发布。
 
 目标：
 
@@ -779,7 +779,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 12.2 skill-eval v0.1
 
-当前状态：Command/MCP Adapter 纵向闭环、JSON/Markdown/JUnit Reporter、Composite GitHub Action 和首个 OCR Benchmark 已实现；正式转写 Benchmark、真实 GitHub Runner 证据和公开发布尚未完成，因此不能视为 v0.1 发布完成。
+当前状态：Command/MCP Adapter 纵向闭环、JSON/Markdown/JUnit Reporter、Composite GitHub Action、CI Badge、真实 GitHub Runner 证据和首个 OCR Benchmark 已实现；正式转写 Benchmark 和公开发布尚未完成，因此不能视为 v0.1 发布完成。
 
 必须有：
 
@@ -885,7 +885,7 @@ skill-router    30%
 2. 使用现有 CER/WER Scorer 建立正式 `video.transcript` Offline Suite。
 3. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
 4. 用 `faster-whisper` 和 `gemini-asr` 运行首个转写 Benchmark；托管模型继续使用 BYOK。
-5. 在真实 GitHub Runner 验证现有 Composite Action 和 OCR Artifact，再增加 README Badge 与独立示例项目。
+5. 基于已验证的 Composite Action 增加 README Badge 与独立示例项目（已完成），下一步准备版本发布说明和外部仓库接入示例。
 6. Router 在不改变现有默认行为的情况下，可选读取并校验 Eval Report。
 7. 增加 Eval-aware Ranking、Policy 和选择理由；Evaluation Evidence 与 Runtime Health 保持独立。
 
