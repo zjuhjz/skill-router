@@ -182,7 +182,7 @@ remote_agent
 
 - Python：3.12.16，`.venv`。
 - `pip check`：无依赖冲突。
-- Router/集成非 live 测试：90 passed、1 skipped；8 个 live 测试按默认配置未运行。
+- Router/集成非 live 测试：93 passed、1 skipped；8 个 live 测试按默认配置未运行。
 - 独立包测试：20 passed；Spec Conformance 覆盖 5 个 Capability、11 个示例，Router 的 10 个 Manifest/19 个 Provision 和 Eval 的 2 个示例 Implementation/2 个 Provision 分别校验。
 - `capability-spec`、`skill-eval`、`skill-router` 均已成功构建 wheel；前两个同时验证了 sdist。
 
@@ -712,7 +712,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 第 7～8 周：Router 接入 Eval
 
-状态：**进行中**。Router 已完成 Eval Report Schema 内置、配置/环境变量/CLI 加载、严格适用性检查和 `list` 证据展示；证据暂不参与默认排序。下一步定义显式启用的 Eval-aware Policy 和选择理由。
+状态：**进行中**。Router 已完成 Eval Report Schema 内置、配置/环境变量/CLI 加载、严格适用性检查和 `list` 证据展示；新增默认关闭的 Eval-aware Policy，只比较同一 Offline Suite Digest 下至少两个有效候选，并在成本、覆盖和 Runtime Health 之后按 Task/Execution Success 与 P95 延迟排序。无法比较时自动回退原排序；每次调用返回策略、候选顺序、Evidence 摘要、选择理由和 fallback 状态。下一步增加显式质量/成本/延迟上限与跨环境聚合策略。
 
 目标：
 
@@ -886,8 +886,8 @@ skill-router    30%
 3. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
 4. 用 `faster-whisper` 和 `gemini-asr` 运行首个转写 Benchmark；托管模型继续使用 BYOK。
 5. 基于已验证的 Composite Action 增加 README Badge 与独立示例项目（已完成），下一步准备版本发布说明和外部仓库接入示例。
-6. 为已接入的 Eval Evidence 定义显式启用、可回退到现有行为的 Route Policy。
-7. 增加 Eval-aware Ranking 和选择理由；Evaluation Evidence 与 Runtime Health 保持独立。
+6. 在现有 Eval-aware Policy 上增加用户可配置的质量、成本和延迟上限，以及跨环境聚合策略。
+7. 用更多正式 Benchmark 证据验证 Eval-aware Ranking；Evaluation Evidence 与 Runtime Health 继续保持独立。
 
 ## 17. 给后续 AI 会话的工作指令
 

@@ -88,7 +88,7 @@ skillrouter restore <skill_id> <capability> <platform>
 
 第一次调用新安装或升级过的 Skill 会返回 `NEED_CONFIRM`，并带上 id、作者、`side_effects` 和 `requires`。确认后加 `--yes`，信任会按内容哈希记下来。内容一变就要再确认。
 
-`invoke` 的 JSON 和 MCP 工具 `invoke` 相同：`ok`、`output`、`served_by`、`attempts`、`skipped`、`hints`。
+`invoke` 的 JSON 和 MCP 工具 `invoke` 相同：`ok`、`output`、`served_by`、`attempts`、`skipped`、`hints`、`routing`。`routing` 记录实际策略、候选顺序、Evidence 摘要、选择理由和是否经过 fallback。
 
 ## MCP
 
@@ -98,7 +98,7 @@ skillrouter restore <skill_id> <capability> <platform>
 |---|---|
 | `list_capabilities` | 有哪些能力、哪些平台、健康情况和要什么凭证 |
 | `describe_capability` | 输入 schema、说明和示例 |
-| `invoke` | 调用。`options` 可带 `prefer_skill`、`allow_paid`、`max_attempts`、`save_to`、`yes` |
+| `invoke` | 调用。`options` 可带 `prefer_skill`、`use_evidence`、`allow_paid`、`max_attempts`、`save_to`、`yes` |
 
 Cursor（`.cursor/mcp.json`）和 Claude Desktop（`claude_desktop_config.json`）可以用同一段。如果 `skillrouter` 不在 PATH 上，把 `command` 换成 `python`，`args` 换成 `["-m", "skillrouter", "mcp"]`。
 
@@ -170,7 +170,7 @@ Skill 在声明里写出变量名，不等于它能读到这个变量。值放�
 
 ## 评测证据
 
-Router 可以读取 `skill-eval.report.v1`，并在 `list --json` 中把适用证据附到对应 Skill；长期 Evaluation Evidence 与短期 Runtime Health 分开保存和展示。当前版本只接入和展示证据，不使用它改变默认排序。
+Router 可以读取 `skill-eval.report.v1`，并在 `list --json` 中把适用证据附到对应 Skill；长期 Evaluation Evidence 与短期 Runtime Health 分开保存和展示。默认排序不使用 Evidence；只有 `invoke --use-evidence`、MCP `options.use_evidence` 或配置显式开启时才启用。
 
 显式校验一份报告或包含多份报告的目录：
 
@@ -183,11 +183,23 @@ skillrouter evidence --report ./benchmark-results
 
 ```json
 {
-  "eval_reports": ["./benchmark-results"]
+  "eval_reports": ["./benchmark-results"],
+  "evaluation_policy": {
+    "enabled": false,
+    "max_age_days": 90,
+    "minimum_trust": "self-tested",
+    "minimum_candidates": 2
+  }
 }
 ```
 
 只有 Implementation ID、版本、内容 SHA-256 和 Capability 全部匹配时，报告才标记为 `applicable`。失效的版本或内容不会进入候选证据；`skillrouter evidence` 会给出 `VERSION_MISMATCH`、`DIGEST_MISMATCH` 等原因。报告内容会通过 Router wheel 内置的 Report Schema 校验。
+
+Eval-aware Policy 默认只比较 90 天内、满足最低信任等级的 Offline Report，并要求至少两个候选使用同一个 Suite Digest；条件不满足时自动回退到原排序。显式 `prefer_skill`、pin、免费优先、平台覆盖和 Runtime Health 始终排在 Evidence 之前。同层候选再按 Task Success、Execution Success 和 P95 延迟排序：
+
+```bash
+skillrouter invoke video.download --url "https://..." --use-evidence --yes
+```
 
 ## Windows
 

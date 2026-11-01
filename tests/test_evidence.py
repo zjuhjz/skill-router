@@ -13,7 +13,17 @@ from tests.fakes import make_skill
 URL = "https://v.douyin.com/evidence-test/"
 
 
-def _report(path: Path, skill_id: str, version: str, digest: str, *, verified_at: str = "2026-11-01T00:00:00Z") -> Path:
+def _report(
+    path: Path,
+    skill_id: str,
+    version: str,
+    digest: str,
+    *,
+    verified_at: str = "2026-11-01T00:00:00Z",
+    task_success_rate: float = 1,
+    p95_latency_ms: float = 10,
+    suite_digest: str = "b" * 64,
+) -> Path:
     report = {
         "schema": "skill-eval.report.v1",
         "subject": {"id": skill_id, "version": version, "digest": f"sha256:{digest}"},
@@ -21,16 +31,16 @@ def _report(path: Path, skill_id: str, version: str, digest: str, *, verified_at
         "suite": {
             "id": "test.video-download.offline",
             "version": "1.0.0",
-            "digest": "sha256:" + "b" * 64,
+            "digest": "sha256:" + suite_digest,
             "mode": "offline",
         },
         "environment": {"os": "linux", "arch": "x86_64", "python": "3.12", "runtime": "command"},
         "results": {
             "runs": 1,
             "execution_success_rate": 1,
-            "task_success_rate": 1,
+            "task_success_rate": task_success_rate,
             "p50_latency_ms": 10,
-            "p95_latency_ms": 10,
+            "p95_latency_ms": p95_latency_ms,
             "average_cost_usd": None,
             "user_outcome_score": None,
             "metrics": {},
@@ -112,3 +122,112 @@ def test_invalid_report_is_rejected_and_cli_returns_failure(skills_root, tmp_pat
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is False
     assert "not a valid date-time" in payload["errors"][0]
+
+
+def test_explicit_evaluation_policy_ranks_comparable_evidence_and_explains_choice(
+    skills_root, tmp_path, monkeypatch
+):
+    make_skill(skills_root, "aaa.lower-quality", {"action": "ok", "id": "1"})
+    make_skill(skills_root, "zzz.higher-quality", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "lower.json",
+        "aaa.lower-quality",
+        skills["aaa.lower-quality"].version,
+        skills["aaa.lower-quality"].content_hash,
+        task_success_rate=0.5,
+        p95_latency_ms=10,
+    )
+    _report(
+        reports / "higher.json",
+        "zzz.higher-quality",
+        skills["zzz.higher-quality"].version,
+        skills["zzz.higher-quality"].content_hash,
+        task_success_rate=1,
+        p95_latency_ms=50,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    default = invoke("video.download", {"url": URL}, yes=True)
+    assert default["served_by"]["skill"] == "aaa.lower-quality"
+    assert default["routing"]["policy"] == "default"
+
+    evaluated = invoke("video.download", {"url": URL}, options={"use_evidence": True}, yes=True)
+    assert evaluated["served_by"]["skill"] == "zzz.higher-quality"
+    assert evaluated["routing"]["policy"] == "evaluation-aware"
+    assert evaluated["routing"]["evaluation"]["applied"] is True
+    assert evaluated["routing"]["selected"] == "zzz.higher-quality"
+    assert evaluated["routing"]["candidates"][0]["evidence"]["task_success_rate"] == 1
+
+    preferred = invoke(
+        "video.download",
+        {"url": URL},
+        options={"use_evidence": True, "prefer_skill": "aaa.lower-quality"},
+        yes=True,
+    )
+    assert preferred["served_by"]["skill"] == "aaa.lower-quality"
+    assert "explicit prefer_skill" in preferred["routing"]["candidates"][0]["reasons"]
+
+
+def test_evaluation_policy_falls_back_when_suites_are_not_comparable(skills_root, tmp_path, monkeypatch):
+    make_skill(skills_root, "aaa.first", {"action": "ok", "id": "1"})
+    make_skill(skills_root, "zzz.second", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "first.json",
+        "aaa.first",
+        skills["aaa.first"].version,
+        skills["aaa.first"].content_hash,
+        task_success_rate=0.2,
+        suite_digest="b" * 64,
+    )
+    _report(
+        reports / "second.json",
+        "zzz.second",
+        skills["zzz.second"].version,
+        skills["zzz.second"].content_hash,
+        task_success_rate=1,
+        suite_digest="c" * 64,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    result = invoke("video.download", {"url": URL}, options={"use_evidence": True}, yes=True)
+    assert result["served_by"]["skill"] == "aaa.first"
+    assert result["routing"]["policy"] == "default"
+    assert result["routing"]["evaluation"]["reason"] == "NOT_ENOUGH_COMPARABLE_CANDIDATES"
+
+
+def test_evaluation_never_overrides_free_before_paid(skills_root, tmp_path, monkeypatch):
+    make_skill(skills_root, "aaa.paid", {"action": "ok", "id": "1"}, cost="paid")
+    make_skill(skills_root, "zzz.free", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    _report(
+        reports / "paid.json",
+        "aaa.paid",
+        skills["aaa.paid"].version,
+        skills["aaa.paid"].content_hash,
+        task_success_rate=1,
+    )
+    _report(
+        reports / "free.json",
+        "zzz.free",
+        skills["zzz.free"].version,
+        skills["zzz.free"].content_hash,
+        task_success_rate=0.1,
+    )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    result = invoke(
+        "video.download",
+        {"url": URL},
+        options={"use_evidence": True, "allow_paid": True},
+        yes=True,
+    )
+    assert result["served_by"]["skill"] == "zzz.free"
+    assert result["routing"]["policy"] == "evaluation-aware"

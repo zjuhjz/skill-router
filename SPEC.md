@@ -486,7 +486,7 @@ AI 不直接看到各个 Skill，只看到路由器。路由器以两种形式�
 |---|---|
 | `list_capabilities` | 列出当前可用的能力、支持的平台、每个平台的健康状态和"需要什么凭证" |
 | `describe_capability(capability)` | 返回该能力的输入 schema、说明和示例 |
-| `invoke(capability, input, options?)` | 调用。`options` 可选：`prefer_skill`、`allow_paid`、`max_attempts`、`save_to` |
+| `invoke(capability, input, options?)` | 调用。`options` 可选：`prefer_skill`、`use_evidence`、`allow_paid`、`max_attempts`、`save_to` |
 
 `invoke` 的返回：
 
@@ -497,9 +497,12 @@ AI 不直接看到各个 Skill，只看到路由器。路由器以两种形式�
   "output": { "meta": {…}, "files": [{ "path": "C:/Users/e_ifox/Downloads/douyin_7412….mp4", … }] },
   "served_by": { "skill": "io.github.someone.douyin-kukutool", "version": "0.4.1" },
   "attempts": [ … ],
+  "routing": { "policy": "default", "selected": "io.github.someone.douyin-kukutool", "candidates": [ … ] },
   "hints": []
 }
 ```
+
+`use_evidence` 默认关闭。显式启用时，只有 ID、版本、内容 Digest 和 Capability 匹配、在有效期内且来自同一 Offline Suite Digest 的 Evaluation Report 才能参与比较；默认至少需要两个可比候选。`prefer_skill`、pin、成本、平台覆盖和 Runtime Health 的优先级仍高于 Evaluation Evidence。无法形成可比证据集时自动使用原排序，并在 `routing.evaluation.reason` 中说明原因。
 
 可选：配置 `expose: per_capability` 时，路由器额外把每个能力暴露成一个独立工具（如 `video_download`），参数直接用能力的输入 schema。对工具选择能力弱的模型更友好，但工具数会随能力增多。默认关闭。
 
@@ -664,7 +667,13 @@ AI 调用：
     { "skill": "io.github.x.douyin-ytdlp", "reason": "NEED_AUTH", "hint": "设置 DOUYIN_COOKIES 后可用" },
     { "skill": "io.github.x.douyin-tikhub", "reason": "PAID_NOT_ALLOWED" }
   ],
-  "hints": ["douyin-ies 刚刚失败（UPSTREAM_CHANGED），可能需要更新"]
+  "hints": ["douyin-ies 刚刚失败（UPSTREAM_CHANGED），可能需要更新"],
+  "routing": {
+    "policy": "default",
+    "selected": "io.github.someone.douyin-kukutool",
+    "fallback": true,
+    "candidates": [ … ]
+  }
 }
 ```
 

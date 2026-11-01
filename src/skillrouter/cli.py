@@ -38,6 +38,7 @@ def _build() -> argparse.ArgumentParser:
     call.add_argument("--allow-paid", action="store_true")
     call.add_argument("--yes", action="store_true", help="trust skills that ask for confirmation")
     call.add_argument("--prefer", dest="prefer_skill")
+    call.add_argument("--use-evidence", action="store_true", help="opt in to comparable skill-eval evidence")
     call.add_argument("--max-attempts", type=int)
 
     health = sub.add_parser("doctor", help="run public health-check URLs")
@@ -186,6 +187,8 @@ def main(argv: list[str] | None = None) -> int:
         options["allow_paid"] = True
     if args.prefer_skill:
         options["prefer_skill"] = args.prefer_skill
+    if args.use_evidence:
+        options["use_evidence"] = True
     if args.max_attempts is not None:
         options["max_attempts"] = args.max_attempts
     payload = invoke(args.capability, raw, options=options, yes=args.yes)

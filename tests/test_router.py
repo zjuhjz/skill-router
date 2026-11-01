@@ -1211,5 +1211,6 @@ def test_pin_and_prefer_still_override_coverage(skills_root, isolate_router):
     (isolate_router / "config.json").write_text(json.dumps({"pin": ["zzz.generic"]}), encoding="utf-8")
     pinned = _invoke()
     assert pinned["served_by"]["skill"] == "zzz.generic"
+    assert "configured pin index=0" in pinned["routing"]["candidates"][0]["reasons"]
     preferred = _invoke(options={"prefer_skill": "aaa.specific"})
     assert preferred["served_by"]["skill"] == "aaa.specific"

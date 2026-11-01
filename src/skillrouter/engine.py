@@ -12,6 +12,7 @@ import threading
 import time
 import uuid
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -57,6 +58,12 @@ _GENERIC_PLATFORM = {"*", "any"}
 # Sample scores are 0–1. The stored health score is that average times 100.
 _CLEARLY_BAD_SCORE = 50.0
 _CLEARLY_BAD_SAMPLES = 3
+_TRUST_SCORE = {
+    "self-tested": 0,
+    "ci-attested": 1,
+    "community-reproduced": 2,
+    "platform-verified": 3,
+}
 
 
 @dataclass
@@ -1256,6 +1263,153 @@ def _quality_rank(item: dict) -> int:
     return 1
 
 
+def _evaluation_policy(options: dict, cfg: dict) -> dict[str, Any]:
+    configured = cfg.get("evaluation_policy") or {}
+    if not isinstance(configured, dict):
+        configured = {}
+    enabled = bool(options["use_evidence"]) if "use_evidence" in options else bool(configured.get("enabled"))
+    minimum_trust = str(configured.get("minimum_trust") or "self-tested")
+    if minimum_trust not in _TRUST_SCORE:
+        minimum_trust = "self-tested"
+    return {
+        "enabled": enabled,
+        "max_age_days": max(0.0, float(configured.get("max_age_days", 90))),
+        "minimum_trust": minimum_trust,
+        "minimum_candidates": max(1, int(configured.get("minimum_candidates", 2))),
+        "suite_id": str(configured.get("suite_id") or "").strip() or None,
+    }
+
+
+def _verified_timestamp(value: object) -> float:
+    try:
+        return datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return 0.0
+
+
+def _apply_evaluation_evidence(
+    runnable: list[dict], records: list[dict[str, Any]], policy: dict[str, Any]
+) -> dict[str, Any]:
+    context: dict[str, Any] = {"enabled": bool(policy["enabled"]), "applied": False}
+    if not policy["enabled"]:
+        return context
+    skills = {item["skill"].id: item["skill"] for item in runnable}
+    cutoff = time.time() - float(policy["max_age_days"]) * 86400
+    minimum_trust = _TRUST_SCORE[policy["minimum_trust"]]
+    groups: dict[str, list[tuple[dict, dict]]] = {}
+    for item in runnable:
+        skill = item["skill"]
+        for record in records:
+            report = record["report"]
+            if report["subject"]["id"] != skill.id or report["capability"] != item["provision"].capability:
+                continue
+            view = public_record(record, skills)
+            if not view["applicable"] or view["suite"]["mode"] != "offline":
+                continue
+            if policy["suite_id"] and view["suite"]["id"] != policy["suite_id"]:
+                continue
+            if _TRUST_SCORE.get(view["trust"]["level"], -1) < minimum_trust:
+                continue
+            if _verified_timestamp(view["verified_at"]) < cutoff:
+                continue
+            groups.setdefault(view["suite"]["digest"], []).append((item, view))
+    comparable = []
+    for digest, pairs in groups.items():
+        candidate_count = len({item["skill"].id for item, _view in pairs})
+        newest = max(_verified_timestamp(view["verified_at"]) for _item, view in pairs)
+        comparable.append((candidate_count, newest, digest, pairs))
+    if not comparable:
+        context["reason"] = "NO_ELIGIBLE_OFFLINE_EVIDENCE"
+        return context
+    candidate_count, _newest, digest, pairs = max(comparable, key=lambda item: (item[0], item[1], item[2]))
+    if candidate_count < int(policy["minimum_candidates"]):
+        context["reason"] = "NOT_ENOUGH_COMPARABLE_CANDIDATES"
+        context["candidate_count"] = candidate_count
+        return context
+    for item in runnable:
+        choices = [view for candidate, view in pairs if candidate is item]
+        if choices:
+            item["evaluation"] = max(
+                choices,
+                key=lambda view: (
+                    _TRUST_SCORE.get(view["trust"]["level"], -1),
+                    _verified_timestamp(view["verified_at"]),
+                ),
+            )
+    first_view = pairs[0][1]
+    context.update(
+        {
+            "applied": True,
+            "suite": {
+                "id": first_view["suite"]["id"],
+                "version": first_view["suite"]["version"],
+                "digest": digest,
+            },
+            "candidate_count": candidate_count,
+        }
+    )
+    return context
+
+
+def _evaluation_rank(item: dict) -> tuple:
+    view = item.get("evaluation")
+    if not isinstance(view, dict):
+        return (1, 0.0, 0.0, float("inf"), 0)
+    results = view["results"]
+    p95 = results.get("p95_latency_ms")
+    return (
+        0,
+        -float(results.get("task_success_rate") or 0),
+        -float(results.get("execution_success_rate") or 0),
+        float(p95) if p95 is not None else float("inf"),
+        -_TRUST_SCORE.get(view["trust"]["level"], 0),
+    )
+
+
+def _routing_context(ranked: list[dict], evaluation: dict[str, Any], *, prefer: str | None) -> dict[str, Any]:
+    pin = [str(item) for item in (load_config().get("pin") or [])]
+    candidates = []
+    for index, item in enumerate(ranked, start=1):
+        skill = item["skill"]
+        view = item.get("evaluation")
+        reasons = [
+            f"cost={item['provision'].cost}",
+            f"coverage={'generic' if _generic_coverage(item['provision'].platforms) else 'specific'}",
+            f"runtime_health={item['grade']}",
+        ]
+        if prefer and skill.id == prefer:
+            reasons.insert(0, "explicit prefer_skill")
+        if skill.id in pin:
+            reasons.insert(0, f"configured pin index={pin.index(skill.id)}")
+        evidence = None
+        if isinstance(view, dict):
+            results = view["results"]
+            reasons.append(
+                f"evidence task_success={float(results['task_success_rate']):.3f} "
+                f"p95_ms={results.get('p95_latency_ms')}"
+            )
+            evidence = {
+                "task_success_rate": results["task_success_rate"],
+                "execution_success_rate": results["execution_success_rate"],
+                "p95_latency_ms": results.get("p95_latency_ms"),
+                "trust": view["trust"],
+                "verified_at": view["verified_at"],
+            }
+        candidates.append(
+            {
+                "rank": index,
+                "skill": skill.id,
+                "reasons": reasons,
+                **({"evidence": evidence} if evidence else {}),
+            }
+        )
+    return {
+        "policy": "evaluation-aware" if evaluation.get("applied") else "default",
+        "evaluation": evaluation,
+        "candidates": candidates,
+    }
+
+
 def _rank(runnable: list[dict], *, prefer: str | None) -> list[dict]:
     cfg = load_config()
     pin = [str(item) for item in (cfg.get("pin") or [])]
@@ -1271,6 +1425,7 @@ def _rank(runnable: list[dict], *, prefer: str | None) -> list[dict]:
             _coverage_rank(item),
             1 if item["half_open"] else 0,
             _GRADE_RANK.get(item["grade"], 9),
+            _evaluation_rank(item),
             -float(item["score"] if item.get("score") is not None else -1),
             float(latency),
             -int(item["priority"]),
@@ -1316,7 +1471,16 @@ def invoke(capability: str, data: dict | None = None, *, options: dict | None = 
     runnable, skipped, pending_confirm, discovery_errors, store = _select(
         full_name, platform, url, allow_paid=allow_paid, yes=yes
     )
+    policy = _evaluation_policy(options, cfg)
+    evidence_records, evidence_errors = load_evidence() if policy["enabled"] else ([], [])
+    evaluation_context = _apply_evaluation_evidence(runnable, evidence_records, policy)
     ranked = _rank(runnable, prefer=str(prefer) if prefer else None)
+    options["_routing"] = _routing_context(
+        ranked,
+        evaluation_context,
+        prefer=str(prefer) if prefer else None,
+    )
+    options["_evidence_errors"] = evidence_errors
     max_attempts = int(options.get("max_attempts") or cfg.get("max_attempts") or 4)
     deadline = time.monotonic() + float(cfg.get("max_total_s") or 300)
     attempts: list[Attempt] = []
@@ -1445,6 +1609,8 @@ def invoke(capability: str, data: dict | None = None, *, options: dict | None = 
             hints=_hints(attempts, skipped, degraded=False),
         )
     result["discovery_errors"] = discovery_errors
+    result["routing"] = options.get("_routing") or {"policy": "default", "candidates": []}
+    result["evidence_errors"] = options.get("_evidence_errors") or []
     _log_call(
         {
             "ts": _iso(),
@@ -1509,7 +1675,12 @@ def _finish_success(
         "skipped": skipped,
         "hints": hints,
         "discovery_errors": discovery_errors,
+        "evidence_errors": options.get("_evidence_errors") or [],
     }
+    routing = copy.deepcopy(options.get("_routing") or {"policy": "default", "candidates": []})
+    routing["selected"] = winner.skill_id
+    routing["fallback"] = bool(attempts and attempts[0].skill_id != winner.skill_id)
+    result["routing"] = routing
     result = redact_tree(result, secrets)
     if not isinstance(result, dict):
         result = {"ok": True, "capability": capability, "output": cleaned_output}

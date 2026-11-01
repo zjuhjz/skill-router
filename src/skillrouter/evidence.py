@@ -41,7 +41,7 @@ def _expand_paths(paths: Iterable[Path]) -> tuple[list[Path], list[str]]:
         elif path.is_file():
             candidates = [path]
         else:
-            errors.append(f"evaluation evidence path does not exist: {path}")
+            errors.append(f"evaluation evidence path does not exist: {path.name or path}")
             continue
         for candidate in candidates:
             key = str(candidate.resolve())
@@ -61,18 +61,18 @@ def load_evidence(paths: Iterable[Path] | None = None) -> tuple[list[dict[str, A
         try:
             report = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError) as exc:
-            errors.append(f"invalid evaluation report {path}: {exc}")
+            errors.append(f"invalid evaluation report {path.name}: {exc}")
             continue
         report_errors = sorted(validator.iter_errors(report), key=lambda item: list(item.path))
         if report_errors:
-            errors.append(f"invalid evaluation report {path}: {report_errors[0].message}")
+            errors.append(f"invalid evaluation report {path.name}: {report_errors[0].message}")
             continue
         try:
             verified_at = datetime.fromisoformat(str(report["verified_at"]).replace("Z", "+00:00"))
         except ValueError:
             verified_at = None
         if verified_at is None or verified_at.tzinfo is None:
-            errors.append(f"invalid evaluation report {path}: verified_at is not a valid date-time")
+            errors.append(f"invalid evaluation report {path.name}: verified_at is not a valid date-time")
             continue
         records.append({"source": str(path.resolve()), "report": report})
     records.sort(key=lambda item: (item["report"]["verified_at"], item["source"]), reverse=True)

@@ -23,6 +23,12 @@ def load_config() -> dict:
     data = {
         "extra_skill_paths": [],
         "eval_reports": [],
+        "evaluation_policy": {
+            "enabled": False,
+            "max_age_days": 90,
+            "minimum_trust": "self-tested",
+            "minimum_candidates": 2,
+        },
         "pin": [],
         "priority": {},
         "disabled": [],

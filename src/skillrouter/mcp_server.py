@@ -53,7 +53,7 @@ def describe_capability_tool(capability: str) -> dict[str, Any]:
     name="invoke",
     description=(
         "Invoke a capability. input matches that capability's input schema. "
-        "options may include prefer_skill, allow_paid, max_attempts, save_to, and yes."
+        "options may include prefer_skill, use_evidence, allow_paid, max_attempts, save_to, and yes."
     ),
     structured_output=False,
 )
