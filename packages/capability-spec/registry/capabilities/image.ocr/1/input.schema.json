@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/capabilities/image.ocr/1/input.schema.json",
+  "title": "image.ocr@1 input",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["file"],
+  "properties": {
+    "file": { "type": "string", "minLength": 1, "description": "相对 context.client_cwd 或绝对路径的本地图片" },
+    "language": { "type": "string", "minLength": 1, "description": "BCP 47 语言提示，如 en、zh-CN 或 und" },
+    "return_blocks": { "type": "boolean", "default": true }
+  }
+}

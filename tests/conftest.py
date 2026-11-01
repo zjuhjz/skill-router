@@ -17,7 +17,10 @@ def isolate_router(tmp_path, monkeypatch):
     skills = tmp_path / "skills"
     skills.mkdir()
     monkeypatch.setenv("SKILLROUTER_HOME", str(home))
-    monkeypatch.setenv("SKILLROUTER_REGISTRY", str(REPO / "registry"))
+    monkeypatch.setenv(
+        "SKILLROUTER_REGISTRY",
+        str(REPO / "packages" / "capability-spec" / "registry"),
+    )
     monkeypatch.setenv("SKILLROUTER_SKILL_PATHS", str(skills))
     monkeypatch.setenv("SKILLROUTER_LAZY_DOCTOR", "0")
     monkeypatch.delenv("SKILLROUTER_YES", raising=False)

@@ -1,0 +1,62 @@
+schema: skill-eval.suite.v1
+id: skillcall.image-ocr.offline
+version: 1.1.0
+capability: image.ocr@1
+mode: offline
+repeat: 1
+limits:
+  timeout_s: 60
+environment:
+  locale: en-US
+cases:
+  - id: ocr-basic-en
+    input:
+      file: fixtures/ocr-basic.png
+      language: en
+      return_blocks: true
+    assertions:
+      - path: /text
+        op: cer_at_most
+        value: |-
+          SKILLCALL OCR
+          VERSION 0.4
+          DATE 2026-11-01
+        maximum: 0.15
+      - path: /text
+        op: contains
+        value: VERSION
+      - path: /blocks
+        op: exists
+        value: true
+  - id: ocr-low-contrast-en
+    input:
+      file: fixtures/ocr-low-contrast.png
+      language: en
+      return_blocks: true
+    assertions:
+      - path: /text
+        op: cer_at_most
+        value: |-
+          SKILLCALL OCR
+          VERSION 0.4
+          DATE 2026-11-01
+        maximum: 0.3
+      - path: /blocks
+        op: exists
+        value: true
+  - id: ocr-rotated-en
+    input:
+      file: fixtures/ocr-rotated.png
+      language: en
+      return_blocks: true
+    assertions:
+      - path: /text
+        op: cer_at_most
+        value: |-
+          SKILLCALL OCR
+          VERSION 0.4
+          DATE 2026-11-01
+        maximum: 0.3
+      - path: /blocks
+        op: exists
+        value: true

@@ -1,0 +1,14 @@
+{
+  "language": "en",
+  "text": "SKILLCALL OCR\nVERSION 0.4\nDATE 2026-11-01",
+  "blocks": [
+    {
+      "text": "SKILLCALL OCR",
+      "bbox": [0.08, 0.12, 0.7, 0.16],
+      "confidence": 0.99
+    }
+  ],
+  "meta": {
+    "engine": "example"
+  }
+}

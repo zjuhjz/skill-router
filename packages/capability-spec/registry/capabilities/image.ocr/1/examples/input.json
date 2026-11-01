@@ -1,0 +1,5 @@
+{
+  "file": "fixtures/ocr-basic.png",
+  "language": "en",
+  "return_blocks": true
+}

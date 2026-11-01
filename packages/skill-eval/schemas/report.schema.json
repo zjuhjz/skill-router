@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/schemas/skill-eval.report.v1.schema.json",
+  "title": "skill-eval Report v1",
+  "type": "object",
+  "required": ["schema", "subject", "capability", "suite", "environment", "results", "trust", "runner", "verified_at"],
+  "properties": {
+    "schema": { "const": "skill-eval.report.v1" },
+    "subject": { "$ref": "#/$defs/digestedSubject" },
+    "capability": { "type": "string", "pattern": "^.+@[1-9][0-9]*$" },
+    "suite": {
+      "allOf": [
+        { "$ref": "#/$defs/digestedSubject" },
+        {
+          "type": "object",
+          "required": ["mode"],
+          "properties": { "mode": { "enum": ["offline", "live"] } }
+        }
+      ]
+    },
+    "environment": {
+      "type": "object",
+      "required": ["os", "arch", "python", "runtime"],
+      "additionalProperties": true
+    },
+    "results": {
+      "type": "object",
+      "required": ["runs", "execution_success_rate", "task_success_rate", "user_outcome_score", "p50_latency_ms", "p95_latency_ms", "average_cost_usd"],
+      "properties": {
+        "runs": { "type": "integer", "minimum": 1 },
+        "execution_success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "task_success_rate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "p50_latency_ms": { "type": ["number", "null"], "minimum": 0 },
+        "p95_latency_ms": { "type": ["number", "null"], "minimum": 0 },
+        "average_cost_usd": { "type": ["number", "null"], "minimum": 0 },
+        "user_outcome_score": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["samples", "mean", "p50", "p95"],
+            "properties": {
+              "samples": { "type": "integer", "minimum": 1 },
+              "mean": { "type": "number", "minimum": 0 },
+              "p50": { "type": "number", "minimum": 0 },
+              "p95": { "type": "number", "minimum": 0 }
+            }
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "cases": { "type": "array" },
+    "trust": {
+      "type": "object",
+      "required": ["level", "issuer"],
+      "properties": {
+        "level": { "enum": ["self-tested", "ci-attested", "community-reproduced", "platform-verified"] },
+        "issuer": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": true
+    },
+    "runner": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": true
+    },
+    "verified_at": { "type": "string", "format": "date-time" }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "digestedSubject": {
+      "type": "object",
+      "required": ["id", "version", "digest"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

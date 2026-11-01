@@ -24,6 +24,9 @@ def registry_dir() -> Path:
         return path
     here = Path(__file__).resolve()
     for parent in here.parents:
+        candidate = parent / "packages" / "capability-spec" / "registry" / "platforms.yaml"
+        if candidate.is_file():
+            return candidate.parent
         candidate = parent / "registry" / "platforms.yaml"
         if candidate.is_file():
             return candidate.parent

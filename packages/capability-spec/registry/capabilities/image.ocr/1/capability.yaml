@@ -1,0 +1,9 @@
+id: image.ocr
+version: 1
+status: stable
+summary: 从本地图片中识别文字，并可选返回文字块、边界框和置信度。
+compliance: 只处理调用方有权读取的单张本地图片；实现不得默认上传到第三方服务。
+routing:
+  file_field: /file
+  file_platform: local
+output_rules: []

@@ -1,0 +1,121 @@
+{
+  "schema": "skill-eval.report.v1",
+  "subject": {
+    "id": "example.tesseract-ocr",
+    "version": "0.1.0",
+    "digest": "sha256:c21a67f8bac285e80f10af3cc2a3a4a4fcf32a88a2874d5d4888a2fb41cd3ef3"
+  },
+  "capability": "image.ocr@1",
+  "suite": {
+    "id": "skillcall.image-ocr.offline",
+    "version": "1.1.0",
+    "digest": "sha256:cdcb72f10b35a5b342f0ec93eba7b351e4be71092e33d8d98a387e9680adeef1",
+    "mode": "offline"
+  },
+  "environment": {
+    "os": "darwin",
+    "os_release": "27.0.0",
+    "arch": "arm64",
+    "python": "3.12.16",
+    "runtime": "command",
+    "locale": "en-US"
+  },
+  "results": {
+    "runs": 3,
+    "execution_success_rate": 1.0,
+    "task_success_rate": 1.0,
+    "p50_latency_ms": 86.938,
+    "p95_latency_ms": 163.828,
+    "average_cost_usd": null,
+    "user_outcome_score": null,
+    "metrics": {
+      "cer": {
+        "samples": 3,
+        "mean": 0.14814814814814814,
+        "p50": 0.1388888888888889,
+        "p95": 0.16388888888888886
+      }
+    }
+  },
+  "cases": [
+    {
+      "case_id": "ocr-basic-en",
+      "attempt": 1,
+      "execution_success": true,
+      "task_success": true,
+      "latency_ms": 172.372,
+      "assertions": [
+        {
+          "passed": true,
+          "detail": "/text: cer=0.138889 maximum=0.150000",
+          "metric": {
+            "name": "cer",
+            "value": 0.1388888888888889
+          }
+        },
+        {
+          "passed": true,
+          "detail": "/text: contains passed"
+        },
+        {
+          "passed": true,
+          "detail": "/blocks: exists passed"
+        }
+      ],
+      "error": null
+    },
+    {
+      "case_id": "ocr-low-contrast-en",
+      "attempt": 1,
+      "execution_success": true,
+      "task_success": true,
+      "latency_ms": 82.551,
+      "assertions": [
+        {
+          "passed": true,
+          "detail": "/text: cer=0.138889 maximum=0.300000",
+          "metric": {
+            "name": "cer",
+            "value": 0.1388888888888889
+          }
+        },
+        {
+          "passed": true,
+          "detail": "/blocks: exists passed"
+        }
+      ],
+      "error": null
+    },
+    {
+      "case_id": "ocr-rotated-en",
+      "attempt": 1,
+      "execution_success": true,
+      "task_success": true,
+      "latency_ms": 86.938,
+      "assertions": [
+        {
+          "passed": true,
+          "detail": "/text: cer=0.166667 maximum=0.300000",
+          "metric": {
+            "name": "cer",
+            "value": 0.16666666666666666
+          }
+        },
+        {
+          "passed": true,
+          "detail": "/blocks: exists passed"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "trust": {
+    "level": "self-tested",
+    "issuer": "local"
+  },
+  "runner": {
+    "name": "skill-eval",
+    "version": "0.1.0"
+  },
+  "verified_at": "2026-11-01T04:34:52.361740Z"
+}

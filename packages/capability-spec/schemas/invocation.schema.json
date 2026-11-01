@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/schemas/invocation.schema.json",
+  "title": "skillcall Command Invocation v0.1",
+  "oneOf": [
+    { "$ref": "#/$defs/request" },
+    { "$ref": "#/$defs/success" },
+    { "$ref": "#/$defs/failure" }
+  ],
+  "$defs": {
+    "request": {
+      "type": "object",
+      "required": ["skillcall", "request_id", "capability", "input", "context"],
+      "properties": {
+        "skillcall": { "const": "0.1" },
+        "request_id": { "type": "string", "minLength": 1 },
+        "capability": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9_]*)+@[1-9][0-9]*$"
+        },
+        "input": { "type": "object" },
+        "context": {
+          "type": "object",
+          "required": ["output_dir", "temp_dir", "timeout_s", "mode"],
+          "properties": {
+            "output_dir": { "type": "string", "minLength": 1 },
+            "temp_dir": { "type": "string", "minLength": 1 },
+            "timeout_s": { "type": "number", "exclusiveMinimum": 0 },
+            "locale": { "type": "string" },
+            "mode": { "enum": ["invoke", "health_check"] },
+            "raw_input_text": { "type": ["string", "null"] },
+            "proxy": { "type": ["string", "null"] },
+            "max_output_bytes": { "type": "integer", "minimum": 0 },
+            "client_cwd": { "type": "string" }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "success": {
+      "type": "object",
+      "required": ["ok", "output"],
+      "properties": {
+        "ok": { "const": true },
+        "output": { "type": "object" },
+        "logs": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "failure": {
+      "type": "object",
+      "required": ["ok", "error"],
+      "properties": {
+        "ok": { "const": false },
+        "error": { "$ref": "#/$defs/error" },
+        "logs": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "error": {
+      "type": "object",
+      "required": ["code", "message"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "message": { "type": "string", "minLength": 1 },
+        "retry_after_s": { "type": "number", "minimum": 0 },
+        "details": { "type": "object" }
+      },
+      "additionalProperties": true
+    }
+  }
+}

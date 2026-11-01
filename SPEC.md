@@ -700,7 +700,7 @@ v0.1 草案把下面 10 件事留作开放问题。v0.2 全部按草案自己的
 4. **AI 只看到 3 个通用工具。** `list_capabilities`、`describe_capability`、`invoke`，外加对等的 CLI。按能力拆工具（`expose: per_capability`）这一版保留开关但默认关闭。
 5. **公开健康看板以后再做。** 这一版只产出 `skillcall.health.v1` 报告：不含 cookie、密钥、本机路径和用户真实链接，并带 `network.kind`（`residential`、`datacenter` 或 `unknown`）。匿名上传，以及把家用宽带和机房 IP 分开汇总，都不在本版。
 6. **名字不变。** 协议叫 `skillcall`，参考实现叫 `skill-router`，命令行叫 `skillrouter`。
-7. **Registry 先由本项目维护。** 新能力通过改 `registry/` 的 PR 进入。以后再交给社区。`registry/` 现在放在本仓库，设计上可以原样拆成独立仓库；路由器只把它当数据读，不在代码里写平台知识。
+7. **Registry 由 capability-spec 维护。** 新能力通过修改 `packages/capability-spec/registry/` 的 PR 进入；路由器只把它当数据读，不在代码里写平台知识。
 8. **质量不达标就继续换。** 不满足 `require_no_watermark` 或 `min_height`，或者没有合格的 muxed 文件时，记为 `QUALITY_NOT_MET` 并继续回退。如果每一次实际尝试都是 `QUALITY_NOT_MET`，返回最好的那份降级结果，并在 `hints` 里说明。
 9. **凭证按 Skill 授权，必须执行。** 声明了环境变量名不等于会拿到它。值放在路由器自己的凭证配置里，或放在 `SKILLROUTER_CRED_<NAME>`；只有该 Skill id 被明确授权时才注入子进程。硬性黑名单（`AWS_*`、`GITHUB_*`、`SSH_*`、`OPENAI_*`、`ANTHROPIC_*`、`AZURE_*`，以及名字以 `_API_KEY` 结尾的变量）默认不注入，除非用户按变量名逐项放行。
 10. **v0.2 先做两个能力。** 当时实现 `video.resolve@1` 和 `video.download@1`。`video.transcript@1` 和 `image.download@1` 留到 v0.3，见下面的增补。
@@ -769,7 +769,7 @@ v0.1 正文里已经写进去的审阅结论继续有效，不回退。其中包
 
 ## 附：v0.3 实现范围
 
-1. `registry/` 写出 `video.resolve@1`、`video.download@1`、`image.download@1`、`video.transcript@1` 的 schema、错误码表、平台 ID、URL 形态和公共体检链接。快手、小红书、微博的 canary 写在 `platforms.yaml`；构建机未能验证的标 `canary_verified: false`。
+1. `packages/capability-spec/registry/` 写出 `video.resolve@1`、`video.download@1`、`image.download@1`、`video.transcript@1` 的 schema、错误码表、平台 ID、URL 形态和公共体检链接。快手、小红书、微博的 canary 写在 `platforms.yaml`；构建机未能验证的标 `canary_verified: false`。
 2. 示例 Skill 放在 `skills/`，各自独立运行：用户的 `douyin_dl.py`（薄适配层，不改原脚本）、iesdouyin、yt-dlp（yt-dlp 实际支持的平台，另加缺失 ffmpeg 时返回 `DEPENDENCY_MISSING`）、bilibili-web、快手分享页、小红书笔记页、微博公开接口、哔哩哔哩字幕、faster-whisper、Gemini ASR。`faster-whisper` 1.2.1 依赖 `av<19`（PyAV 19 去掉了 `metadata_errors`）。本地 ASR 默认关闭 VAD；`language` 以 `zh` 开头时加简体中文提示。
-3. `skill-router` 负责发现、匹配、排序、调用、回退、熔断、日志、doctor 和 MCP。路由器代码不包含平台名字；平台知识只出现在 `registry/` 和 `skills/`。
+3. `skill-router` 负责发现、匹配、排序、调用、回退、熔断、日志、doctor 和 MCP。路由器代码不包含平台名字；平台知识只出现在 `packages/capability-spec/registry/` 和 `skills/`。
 4. 回退用两个声明了同一能力的 Skill 演示：前一个失败，路由器自动调用下一个。转写也一样：没有字幕就换 ASR。

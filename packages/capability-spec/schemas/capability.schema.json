@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/schemas/capability.schema.json",
+  "title": "skillcall Capability Contract v0.4",
+  "type": "object",
+  "required": ["id", "version", "status", "summary", "routing", "output_rules"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:\\.[a-z][a-z0-9_]*)+$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "enum": ["draft", "stable", "deprecated"] },
+    "summary": { "type": "string", "minLength": 1 },
+    "compliance": { "type": "string" },
+    "routing": {
+      "oneOf": [
+        { "const": "none" },
+        {
+          "type": "object",
+          "properties": {
+            "platform_field": { "$ref": "#/$defs/jsonPointer" },
+            "url_field": { "$ref": "#/$defs/jsonPointer" },
+            "file_field": { "$ref": "#/$defs/jsonPointer" },
+            "file_platform": { "$ref": "#/$defs/platformId" },
+            "extract_url_from_text": { "type": "boolean" }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "output_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["type", "on_fail"],
+        "properties": {
+          "type": {
+            "enum": [
+              "require_file_role",
+              "input_flag_forbids_field",
+              "input_number_minimum"
+            ]
+          },
+          "role": { "type": "string", "minLength": 1 },
+          "suffixes": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^\\.[A-Za-z0-9]+$" },
+            "minItems": 1,
+            "uniqueItems": true
+          },
+          "flag": { "type": "string", "minLength": 1 },
+          "input": { "type": "string", "minLength": 1 },
+          "field": { "type": "string", "minLength": 1 },
+          "forbidden": {},
+          "missing": { "enum": ["ignore", "fail"] },
+          "on_fail": { "$ref": "#/$defs/errorCode" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "require_file_role" } }, "required": ["type"] },
+            "then": { "required": ["role", "suffixes"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "input_flag_forbids_field" } }, "required": ["type"] },
+            "then": { "required": ["flag", "role", "field", "forbidden"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "input_number_minimum" } }, "required": ["type"] },
+            "then": { "required": ["input", "role", "field"] }
+          }
+        ],
+        "additionalProperties": true
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "jsonPointer": { "type": "string", "pattern": "^(?:/(?:[^~/]|~[01])*)*$" },
+    "platformId": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
+    "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+  }
+}

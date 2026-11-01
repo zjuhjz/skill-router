@@ -13,6 +13,28 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install
-        run: pip install -e ".[skills,dev]"
+        run: |
+          pip install -e ".[skills,dev]"
+          pip install -e ./packages/capability-spec -e ./packages/skill-eval
       - name: Unit tests
         run: pytest -m "not live"
+      - name: Package and integration tests
+        run: pytest packages/capability-spec/tests packages/skill-eval/tests tests/test_spec_integration.py tests/test_registry.py
+
+  image-ocr-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Tesseract
+        run: sudo apt-get update && sudo apt-get install --yes tesseract-ocr
+      - name: Run image.ocr benchmark
+        uses: ./packages/skill-eval
+        with:
+          implementation: packages/skill-eval/implementations/tesseract-ocr
+          suite: packages/skill-eval/benchmarks/image-ocr/offline.yaml
+          mode: offline
+          output-dir: skill-eval-report/image-ocr-tesseract
+          artifact-name: image-ocr-tesseract-${{ runner.os }}-${{ runner.arch }}

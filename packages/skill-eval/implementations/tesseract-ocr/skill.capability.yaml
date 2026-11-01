@@ -1,0 +1,21 @@
+skillcall: "0.1"
+id: example.tesseract-ocr
+version: 0.1.0
+name: Tesseract OCR
+author:
+  name: skill-eval examples
+license: MIT
+provides:
+  - capability: image.ocr@1
+    platforms: [local]
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py"]
+    timeout_s: 60
+    requires:
+      binaries: [tesseract]
+      network: false
+    cost: free
+    side_effects: []
+    health_check:
+      enabled: false

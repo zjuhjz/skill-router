@@ -17,6 +17,7 @@ def test_examples_match_schemas():
         ("video.download", 1),
         ("video.resolve", 1),
         ("image.download", 1),
+        ("image.ocr", 1),
         ("video.transcript", 1),
     }
     for doc in registry["capabilities"].values():

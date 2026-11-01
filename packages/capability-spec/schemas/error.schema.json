@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skillcall.dev/schemas/error.schema.json",
+  "title": "skillcall Error v0.1",
+  "type": "object",
+  "required": ["code", "message"],
+  "properties": {
+    "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "message": { "type": "string", "minLength": 1 },
+    "retry_after_s": { "type": "number", "minimum": 0 },
+    "details": { "type": "object" }
+  },
+  "additionalProperties": true
+}

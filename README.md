@@ -4,9 +4,25 @@
 
 AI 向路由器要一个能力（例如 `video.download@1`），路由器找出声明了这个能力的 Skill，按成本、覆盖面、健康和熔断排序，用 stdin/stdout JSON 调用其中一个。失败时按错误码决定要不要换下一个。
 
-路由器代码里没有平台名字。平台 ID、URL 形态、公共体检链接、能力 schema 和错误码都在 [`registry/`](registry/)。示例实现在 [`skills/`](skills/)，每个目录都能单独跑。协议说明见 [SPEC.md](SPEC.md)（v0.3）。
+路由器代码里没有平台名字。平台 ID、URL 形态、公共体检链接、能力 schema 和错误码都在 [`packages/capability-spec/registry/`](packages/capability-spec/registry/)。示例实现在 [`skills/`](skills/)，每个目录都能单独跑。协议说明见 [SPEC.md](SPEC.md)（v0.3）。
 
 0.3.8 的能力：`video.resolve@1`、`video.download@1`、`image.download@1`、`video.transcript@1`。
+
+## capability-spec v0.4 快照
+
+仓库现在包含独立的 [`capability-spec`](packages/capability-spec/) 包；其中的 `schemas/`
+定义 Capability、Implementation Manifest、调用消息和标准错误对象；
+`registry/` 保存五个能力及其输入输出契约，`skillcall_spec.conformance`
+负责一致性校验。它只描述契约，不执行 Skill、
+计算健康分或参与路由。
+
+```bash
+pip install -e ./packages/capability-spec
+skillcall-spec validate --implementations ./skills
+```
+
+该命令会同时校验 JSON Schema、Capability/示例、现有
+`skill.capability.yaml`，以及能力、平台、错误码之间的交叉引用。
 
 ### 排序
 
@@ -187,11 +203,12 @@ python -m skillrouter list
 pip install -e ".[skills,dev]"
 pytest
 pytest -m live
+skillcall-spec validate --implementations ./skills
 ```
 
 `skills` 里的 `requests` 是部分单测要导入的示例 Skill 依赖。
 
-默认不跑需要外网的测试。`registry/` 以后可以原样拆成独立仓库；wheel 里会带一份快照，离线也能用。环境变量 `SKILLROUTER_REGISTRY` 和 `SKILLROUTER_HOME` 可以改位置。
+默认不跑需要外网的测试。`packages/capability-spec/registry/` 已属于独立包；Router wheel 仍会带一份快照，离线也能用。环境变量 `SKILLROUTER_REGISTRY` 和 `SKILLROUTER_HOME` 可以改位置。
 
 ## 合规
 

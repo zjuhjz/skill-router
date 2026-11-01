@@ -1,0 +1,21 @@
+skillcall: "0.1"
+id: example.paddleocr
+version: 0.1.0
+name: PaddleOCR
+author:
+  name: skill-eval examples
+license: MIT
+provides:
+  - capability: image.ocr@1
+    platforms: [local]
+    entrypoint:
+      type: command
+      command: ["$PYTHON", "entry.py"]
+    timeout_s: 120
+    requires:
+      python: ["paddleocr", "paddlepaddle"]
+      network: true
+    cost: free
+    side_effects: [network]
+    health_check:
+      enabled: false
