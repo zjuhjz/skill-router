@@ -70,11 +70,22 @@ def evaluate_assertion(output: Any, assertion: dict[str, Any]) -> dict[str, Any]
         if not isinstance(actual, str) or not isinstance(expected, str):
             return {"passed": False, "detail": f"{path}: transcript and reference must be strings"}
         lowercase = bool(assertion.get("lowercase", True))
+        strip_punctuation = bool(assertion.get("strip_punctuation", False))
         metric_name = "cer" if operation == "cer_at_most" else "wer"
         metric_value = (
-            character_error_rate(expected, actual, lowercase=lowercase)
+            character_error_rate(
+                expected,
+                actual,
+                lowercase=lowercase,
+                strip_punctuation=strip_punctuation,
+            )
             if metric_name == "cer"
-            else word_error_rate(expected, actual, lowercase=lowercase)
+            else word_error_rate(
+                expected,
+                actual,
+                lowercase=lowercase,
+                strip_punctuation=strip_punctuation,
+            )
         )
         maximum = float(assertion["maximum"])
         passed = metric_value <= maximum

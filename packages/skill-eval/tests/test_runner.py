@@ -1,3 +1,4 @@
+import hashlib
 import json
 from copy import deepcopy
 from pathlib import Path
@@ -9,7 +10,7 @@ from jsonschema import Draft202012Validator
 
 from skilleval.comparison import ComparisonError, load_reports, render_comparison
 from skilleval.reporters import render
-from skilleval.runner import run_evaluation
+from skilleval.runner import EvaluationError, _validate_fixtures, run_evaluation
 from skilleval.scorers import pointer_get, score_assertion
 from skilleval.transcript import character_error_rate, word_error_rate
 
@@ -115,6 +116,10 @@ def test_transcript_error_rates_are_deterministic():
     assert character_error_rate("你好世界", "你好世间") == 0.25
     assert character_error_rate("Ａ B", "a b") == 0
     assert word_error_rate("hello world", "hello brave world") == 0.5
+    assert word_error_rate("MISTER QUILTER", "Mr. Quilter") == 0.5
+    assert word_error_rate(
+        "HELLO WORLD", "Hello, world.", strip_punctuation=True
+    ) == 0
     passed, detail = score_assertion(
         {"text": "你好世间"},
         {"path": "/text", "op": "cer_at_most", "value": "你好世界", "maximum": 0.25},
@@ -154,6 +159,95 @@ def test_fixture_manifest_requires_redistribution_rights():
     Draft202012Validator(schema).validate(manifest)
     manifest["samples"][0]["license"]["redistribution_allowed"] = False
     assert list(Draft202012Validator(schema).iter_errors(manifest))
+
+
+def test_runner_rejects_fixture_manifest_digest_mismatch(tmp_path):
+    implementation = tmp_path / "implementation"
+    implementation.mkdir()
+    (implementation / "skill.capability.yaml").write_text(
+        yaml.safe_dump(
+            {
+                "skillcall": "0.1",
+                "id": "test.echo",
+                "version": "1.0.0",
+                "name": "Echo",
+                "author": {"name": "tests"},
+                "license": "MIT",
+                "provides": [
+                    {
+                        "capability": "text.echo@1",
+                        "platforms": ["local"],
+                        "entrypoint": {"type": "command", "command": ["$PYTHON", "entry.py"]},
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (tmp_path / "fixtures.yaml").write_text("schema: skill-eval.fixtures.v1\n", encoding="utf-8")
+    suite = tmp_path / "suite.yaml"
+    suite.write_text(
+        yaml.safe_dump(
+            {
+                "schema": "skill-eval.suite.v1",
+                "id": "test.echo.offline",
+                "version": "1.0.0",
+                "capability": "text.echo@1",
+                "mode": "offline",
+                "fixtures": {"manifest": "fixtures.yaml", "digest": "sha256:" + "0" * 64},
+                "cases": [{"id": "one", "input": {"text": "hello"}, "assertions": []}],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(EvaluationError, match="fixture manifest digest mismatch"):
+        run_evaluation(implementation, suite)
+
+
+def test_runner_accepts_verified_fixture_bundle(tmp_path):
+    fixture = tmp_path / "fixtures" / "sample.txt"
+    fixture.parent.mkdir()
+    fixture.write_text("sample", encoding="utf-8")
+    fixture_bytes = fixture.read_bytes()
+    manifest = tmp_path / "fixtures.yaml"
+    manifest.write_text(
+        yaml.safe_dump(
+            {
+                "schema": "skill-eval.fixtures.v1",
+                "id": "test.fixtures",
+                "version": "1",
+                "samples": [
+                    {
+                        "id": "sample",
+                        "path": "fixtures/sample.txt",
+                        "sha256": hashlib.sha256(fixture_bytes).hexdigest(),
+                        "size_bytes": len(fixture_bytes),
+                        "media_type": "text/plain",
+                        "language": "en",
+                        "reference": {"text": "sample"},
+                        "tags": ["english"],
+                        "license": {
+                            "spdx": "MIT",
+                            "source_url": "https://example.test/sample",
+                            "proof_url": "https://example.test/license",
+                            "attribution": "test",
+                            "redistribution_allowed": True,
+                        },
+                    }
+                ],
+            },
+            sort_keys=False,
+        ),
+        encoding="utf-8",
+    )
+    _validate_fixtures(
+        tmp_path / "suite.yaml",
+        {
+            "manifest": "fixtures.yaml",
+            "digest": "sha256:" + hashlib.sha256(manifest.read_bytes()).hexdigest(),
+        },
+    )
 
 
 def test_cli_writes_all_report_formats_without_rerunning(tmp_path, monkeypatch):

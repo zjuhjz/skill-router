@@ -1,0 +1,32 @@
+schema: skill-eval.suite.v1
+id: skillcall.video-transcript.offline
+version: 0.1.0
+capability: video.transcript@1
+mode: offline
+repeat: 1
+fixtures:
+  manifest: fixtures.yaml
+  digest: sha256:2ee83a1c79cde6f7010fce6ee596d365886ad70d698c1ac885dba71fe9c421af
+limits:
+  timeout_s: 600
+environment:
+  locale: en-US
+cases:
+  - id: librispeech-1272-128104-0000
+    input:
+      file: fixtures/1272-128104-0000.flac
+      language: en
+    assertions:
+      - path: /text
+        op: wer_at_most
+        value: MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL
+        maximum: 0.25
+        strip_punctuation: true
+      - path: /text
+        op: cer_at_most
+        value: MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL
+        maximum: 0.15
+        strip_punctuation: true
+      - path: /segments
+        op: exists
+        value: true

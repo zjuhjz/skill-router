@@ -1,0 +1,91 @@
+{
+  "schema": "skill-eval.report.v1",
+  "subject": {
+    "id": "example.faster-whisper",
+    "version": "0.3.1",
+    "digest": "sha256:769cec89dd7d0e61199e338a4bcbe8e5682a1d50c1fc9f9a776db1fcef85f8f7"
+  },
+  "capability": "video.transcript@1",
+  "suite": {
+    "id": "skillcall.video-transcript.offline",
+    "version": "0.1.0",
+    "digest": "sha256:21c9f580d07c50509ec56df67318c4d242777537656af9ec7e182bed9947b6ac",
+    "mode": "offline",
+    "fixtures": {
+      "manifest": "fixtures.yaml",
+      "digest": "sha256:2ee83a1c79cde6f7010fce6ee596d365886ad70d698c1ac885dba71fe9c421af"
+    }
+  },
+  "environment": {
+    "os": "darwin",
+    "os_release": "27.0.0",
+    "arch": "arm64",
+    "python": "3.12.16",
+    "runtime": "command",
+    "locale": "en-US"
+  },
+  "results": {
+    "runs": 1,
+    "execution_success_rate": 1.0,
+    "task_success_rate": 1.0,
+    "p50_latency_ms": 2037.358,
+    "p95_latency_ms": 2037.358,
+    "average_cost_usd": null,
+    "user_outcome_score": null,
+    "metrics": {
+      "cer": {
+        "samples": 1,
+        "mean": 0.0547945205479452,
+        "p50": 0.0547945205479452,
+        "p95": 0.0547945205479452
+      },
+      "wer": {
+        "samples": 1,
+        "mean": 0.058823529411764705,
+        "p50": 0.058823529411764705,
+        "p95": 0.058823529411764705
+      }
+    }
+  },
+  "cases": [
+    {
+      "case_id": "librispeech-1272-128104-0000",
+      "attempt": 1,
+      "execution_success": true,
+      "task_success": true,
+      "latency_ms": 2037.358,
+      "assertions": [
+        {
+          "passed": true,
+          "detail": "/text: wer=0.058824 maximum=0.250000",
+          "metric": {
+            "name": "wer",
+            "value": 0.058823529411764705
+          }
+        },
+        {
+          "passed": true,
+          "detail": "/text: cer=0.054795 maximum=0.150000",
+          "metric": {
+            "name": "cer",
+            "value": 0.0547945205479452
+          }
+        },
+        {
+          "passed": true,
+          "detail": "/segments: exists passed"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "trust": {
+    "level": "self-tested",
+    "issuer": "local"
+  },
+  "runner": {
+    "name": "skill-eval",
+    "version": "0.1.0"
+  },
+  "verified_at": "2026-11-01T14:38:39.137840Z"
+}

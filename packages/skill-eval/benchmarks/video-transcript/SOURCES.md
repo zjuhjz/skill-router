@@ -9,11 +9,18 @@ license record in `skill-eval.fixtures.v1`.
 - Official source: https://www.openslr.org/12/
 - Dataset license: CC BY 4.0.
 - Intended coverage: clean English read speech.
-- Decision: eligible, provided the selected utterance is copied without an
-  unclear transformation and the manifest preserves attribution to LibriSpeech,
-  Vassil Panayotov, Daniel Povey, and the underlying LibriVox source.
-- Remaining work: select a small utterance, verify its reference transcript
-  against the official split metadata, and record the exact SHA-256.
+- Decision: eligible. The first slice uses the unchanged
+  `dev-clean/1272/128104/1272-128104-0000.flac` utterance and its official split
+  transcript. The fixture manifest preserves attribution to LibriSpeech,
+  Vassil Panayotov, Daniel Povey, contributors, and the underlying LibriVox
+  source.
+- Verification: the selected file is extracted from the official
+  `dev-clean.tar.gz` archive and compared byte-for-byte before it is committed.
+  Its SHA-256, byte length, duration, reference transcript, and original archive
+  path are recorded in `fixtures.yaml`. The downloaded archive matched the
+  OpenSLR-published MD5 `42e2234ba48799c1f50f24a7926300a1`; its bundled
+  `LibriSpeech/LICENSE.TXT` identifies the corpus as CC BY 4.0, and the bundled
+  `1272-128104.trans.txt` contains the committed reference transcript.
 
 ## Candidate: AISHELL-1 / OpenSLR SLR33
 

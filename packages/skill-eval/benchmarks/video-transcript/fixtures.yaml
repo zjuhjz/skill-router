@@ -1,0 +1,27 @@
+schema: skill-eval.fixtures.v1
+id: skillcall.video-transcript.offline
+version: 0.1.0
+samples:
+  - id: librispeech-1272-128104-0000
+    path: fixtures/1272-128104-0000.flac
+    sha256: 4e25e22555cd16e90edb0a3b49fdcf1fe652b2a1250ab643634db33895c75b41
+    size_bytes: 120041
+    media_type: audio/flac
+    duration_ms: 5855
+    sample_rate_hz: 16000
+    channels: 1
+    bit_depth: 16
+    language: en-US
+    reference:
+      text: MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL
+      speaker_id: "1272"
+      chapter_id: "128104"
+      utterance_id: 1272-128104-0000
+      original_path: LibriSpeech/dev-clean/1272/128104/1272-128104-0000.flac
+    tags: [english, clean, proper-nouns]
+    license:
+      spdx: CC-BY-4.0
+      source_url: https://www.openslr.org/resources/12/dev-clean.tar.gz
+      proof_url: https://www.openslr.org/12
+      attribution: LibriSpeech by Vassil Panayotov, Daniel Povey, and contributors; derived from LibriVox public-domain audiobooks.
+      redistribution_allowed: true

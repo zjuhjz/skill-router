@@ -82,6 +82,11 @@ def render_markdown(report: dict[str, Any]) -> str:
             "",
             f"- Subject digest: `{_escape(subject['digest'])}`",
             f"- Suite digest: `{_escape(suite['digest'])}`",
+            *(
+                [f"- Fixture manifest digest: `{_escape(suite['fixtures']['digest'])}`"]
+                if suite.get("fixtures")
+                else []
+            ),
             f"- Trust: `{_escape(report['trust']['level'])}` issued by `{_escape(report['trust']['issuer'])}`",
             f"- Runner: `{_escape(report['runner']['name'])}` `{_escape(report['runner']['version'])}`",
             "",

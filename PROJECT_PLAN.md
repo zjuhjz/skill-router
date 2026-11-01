@@ -142,9 +142,9 @@ remote_agent
 - `skill-eval.suite.v1` 与 `skill-eval.report.v1` JSON Schema。
 - Offline/Live 模式隔离、重复运行、超时、环境指纹和内容 Digest。
 - Exact、Contains、Regex、Numeric Tolerance、Set Overlap、Exists Scorer。
-- Transcript CER/WER Scorer，使用 Unicode NFKC、确定性编辑距离，并把聚合指标写入标准 Report。
-- `skill-eval.fixtures.v1` Schema 与转写 Fixture 许可证准入规则；音频资产本身尚未选定或提交。
-- 第一轮音频来源审核：LibriSpeech 可作为英文候选；AISHELL-1 需检查归档内许可证；Common Voice 因当前条款要求不要镜像而不提交到仓库。
+- Transcript CER/WER Scorer，使用 Unicode NFKC、确定性编辑距离，并支持由 Suite 显式启用 Unicode 标点移除；聚合指标写入标准 Report。
+- `skill-eval.fixtures.v1` Schema、转写 Fixture 许可证准入规则和运行前完整性校验；Suite 绑定 Manifest Digest，Runner 在调用 Implementation 前验证每个资产的字节长度和 SHA-256。
+- 第一轮音频来源审核和英文纵向闭环：已从 OpenSLR 官方 LibriSpeech `dev-clean` 归档选择一条 5.855 秒英文语音，核对归档 MD5、内置 CC BY 4.0 许可证、官方 transcript 和音频 SHA-256 后提交。AISHELL-1 仍需检查归档内许可证；Common Voice 因当前条款要求不要镜像而不提交到仓库。
 - Execution Success、Task Success、User Outcome 分离；未测量的 User Outcome 明确为 `null`。
 - P50/P95 延迟统计、JSON/Markdown/JUnit Report 和本地 `self-tested` 可信等级；三种格式由同一份标准 JSON Report 派生，不重复执行 Implementation。
 - `skill-eval compare` 可校验多个标准 JSON Report 的 Capability 与 Suite Digest，并生成静态 Markdown 对比页。
@@ -155,8 +155,7 @@ remote_agent
 
 - GitHub Check Reporter。
 - 成本采集与预算中止。
-- 正式的 `video.transcript` Benchmark 和通过许可证审核的音频 Fixture 资产。
-- README Badge 和 GitHub Check Reporter。
+- 普通话、中英混合、噪声和多人说话的已审核转写 Fixture。
 
 ### 3.3 skill-router 0.3.8
 
@@ -182,8 +181,8 @@ remote_agent
 
 - Python：3.12.16，`.venv`。
 - `pip check`：无依赖冲突。
-- Router/集成非 live 测试：98 passed、1 skipped；8 个 live 测试按默认配置未运行。
-- 独立包测试：20 passed；Spec Conformance 覆盖 5 个 Capability、11 个示例，Router 的 10 个 Manifest/19 个 Provision 和 Eval 的 2 个示例 Implementation/2 个 Provision 分别校验。
+- 全仓库非 live 测试：99 passed；8 个 live 测试按默认配置未运行。
+- 独立包测试：25 passed；Spec Conformance 覆盖 5 个 Capability、11 个示例，Router 的 10 个 Manifest/19 个 Provision 和 Eval 的 2 个示例 Implementation/2 个 Provision 分别校验。
 - `capability-spec`、`skill-eval`、`skill-router` 均已成功构建 wheel；前两个同时验证了 sdist。
 
 ## 4. capability-spec 的边界
@@ -696,7 +695,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 第 6 周：GitHub Action 与第一次公开发布
 
-状态：**进行中**。Composite GitHub Action、三格式 Artifact 上传、CI Badge 和可复制示例已加入；Ubuntu/Tesseract OCR Benchmark 已在真实 GitHub-hosted Linux x86_64 Runner 运行成功，下载的 Artifact 通过 Report Schema 校验。仍需正式转写 Benchmark 和第一次公开版本发布。
+状态：**进行中**。Composite GitHub Action、三格式 Artifact 上传、CI Badge 和可复制示例已加入；Ubuntu/Tesseract OCR Benchmark 已在真实 GitHub-hosted Linux x86_64 Runner 运行成功，下载的 Artifact 通过 Report Schema 校验。`video.transcript` 0.1 英文 Offline Suite、经许可证审核的 LibriSpeech Fixture 和 macOS arm64 `faster-whisper small` 标准证据已完成；仍需扩充语种/场景、托管模型对比和第一次公开版本发布。
 
 目标：
 
@@ -779,7 +778,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 12.2 skill-eval v0.1
 
-当前状态：Command/MCP Adapter 纵向闭环、JSON/Markdown/JUnit Reporter、Composite GitHub Action、CI Badge、真实 GitHub Runner 证据和首个 OCR Benchmark 已实现；正式转写 Benchmark 和公开发布尚未完成，因此不能视为 v0.1 发布完成。
+当前状态：Command/MCP Adapter 纵向闭环、JSON/Markdown/JUnit Reporter、Composite GitHub Action、CI Badge、真实 GitHub Runner 证据、OCR Benchmark，以及 `video.transcript` 0.1 英文 Offline Benchmark 均已实现。首条转写证据在 macOS arm64 / Python 3.12、默认 `small` 模型上达到 100% Execution/Task Success、5.88% 规范化 WER、5.48% 规范化 CER 和约 2.04 秒 P95；仍需补充普通话/混合/噪声/多人场景、托管模型对比和公开发布。
 
 必须有：
 
@@ -881,11 +880,11 @@ skill-router    30%
 
 优先执行：
 
-1. 按现有 `skill-eval.fixtures.v1` Schema 选择并审核可合法分发的普通话、英文、中英混合、噪声和多人语音资产，记录许可证、来源和校验和。
-2. 使用现有 CER/WER Scorer 建立正式 `video.transcript` Offline Suite。
-3. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
-4. 用 `faster-whisper` 和 `gemini-asr` 运行首个转写 Benchmark；托管模型继续使用 BYOK。
-5. 基于已验证的 Composite Action 增加 README Badge 与独立示例项目（已完成），下一步准备版本发布说明和外部仓库接入示例。
+1. 继续审核可合法分发的普通话、中英混合、噪声和多人语音资产；英文 LibriSpeech Fixture、Manifest 绑定和完整性校验已完成。
+2. 用 `gemini-asr` 在同一 `video.transcript` Suite 运行托管模型对比；继续使用 BYOK，标准证据不得包含密钥。
+3. 为转写 Benchmark 增加 Linux/self-hosted 证据，避免把单机 macOS 结果误作排行榜。
+4. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
+5. 准备 `skill-eval v0.1.0` 发布说明和外部仓库接入示例。
 6. 为更多 Capability 定义可选指标 Profile，并根据正式 Benchmark 调整 Profile 顺序与门槛。
 7. 用更多正式 Benchmark 证据验证 Eval-aware Ranking；Evaluation Evidence 与 Runtime Health 继续保持独立。
 

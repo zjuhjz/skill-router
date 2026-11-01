@@ -11,7 +11,7 @@ environment fingerprints, and `skill-eval.report.v1` JSON reports.
 ```bash
 pip install -e .
 skill-eval run ../../skills/faster-whisper \
-  --suite suites/video-transcript/offline.yaml \
+  --suite benchmarks/video-transcript/offline.yaml \
   --json report.json \
   --markdown report.md \
   --junit report.xml
@@ -55,10 +55,15 @@ A complete Tesseract example is available in
 [`examples/github-action.yml`](examples/github-action.yml).
 
 Supported assertions are `exact`, `contains`, `regex`, `numeric_tolerance`,
-`set_overlap`, `exists`, `cer_at_most`, and `wer_at_most`. Assertion paths are JSON Pointers relative to the
-implementation's `output` object.
+`set_overlap`, `exists`, `cer_at_most`, and `wer_at_most`. CER/WER assertions
+can opt into Unicode punctuation removal with `strip_punctuation: true` while
+retaining punctuation-sensitive behavior by default. Assertion paths are JSON
+Pointers relative to the implementation's `output` object.
 
 Public benchmark audio must satisfy
 [`schemas/fixture-manifest.schema.json`](schemas/fixture-manifest.schema.json)
 and the licensing rules in
 [`benchmarks/video-transcript/README.md`](benchmarks/video-transcript/README.md).
+When a suite declares a `fixtures` manifest, the runner verifies the manifest
+digest plus every fixture's byte length and SHA-256 before invoking any
+implementation.

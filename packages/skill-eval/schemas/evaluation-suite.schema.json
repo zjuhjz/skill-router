@@ -14,6 +14,18 @@
     },
     "mode": { "enum": ["offline", "live"] },
     "repeat": { "type": "integer", "minimum": 1 },
+    "fixtures": {
+      "type": "object",
+      "required": ["manifest", "digest"],
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.ya?ml$"
+        },
+        "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      },
+      "additionalProperties": false
+    },
     "environment": {
       "type": "object",
       "properties": {
@@ -64,7 +76,8 @@
         "tolerance": { "type": "number", "minimum": 0 },
         "minimum": { "type": "number", "minimum": 0, "maximum": 1 },
         "maximum": { "type": "number", "minimum": 0 },
-        "lowercase": { "type": "boolean" }
+        "lowercase": { "type": "boolean" },
+        "strip_punctuation": { "type": "boolean" }
       },
       "allOf": [
         {

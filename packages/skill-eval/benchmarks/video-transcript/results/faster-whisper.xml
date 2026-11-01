@@ -1,0 +1,14 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testsuite name="skillcall.video-transcript.offline" tests="1" failures="0" errors="0" skipped="0" time="2.037358" timestamp="2026-11-01T14:38:39.137840Z">
+  <properties>
+    <property name="schema" value="skill-eval.report.v1" />
+    <property name="subject.id" value="example.faster-whisper" />
+    <property name="subject.version" value="0.3.1" />
+    <property name="subject.digest" value="sha256:769cec89dd7d0e61199e338a4bcbe8e5682a1d50c1fc9f9a776db1fcef85f8f7" />
+    <property name="capability" value="video.transcript@1" />
+    <property name="suite.digest" value="sha256:21c9f580d07c50509ec56df67318c4d242777537656af9ec7e182bed9947b6ac" />
+    <property name="suite.mode" value="offline" />
+    <property name="trust.level" value="self-tested" />
+  </properties>
+  <testcase classname="video.transcript@1" name="librispeech-1272-128104-0000[attempt=1]" time="2.037358" />
+</testsuite>

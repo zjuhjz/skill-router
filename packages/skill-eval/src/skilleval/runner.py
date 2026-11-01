@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, FormatChecker
 from skillcall_spec.resources import schema_path as spec_schema_path
 
 from . import __version__
@@ -54,6 +54,41 @@ def _load_yaml(path: Path) -> dict[str, Any]:
     if not isinstance(data, dict):
         raise EvaluationError(f"{path} must contain a mapping")
     return data
+
+
+def _validate_fixtures(suite_path: Path, fixture_config: dict[str, Any] | None) -> None:
+    if fixture_config is None:
+        return
+    manifest_path = (suite_path.parent / fixture_config["manifest"]).resolve()
+    try:
+        manifest_path.relative_to(suite_path.parent)
+    except ValueError as exc:
+        raise EvaluationError("fixture manifest must stay inside the suite directory") from exc
+    manifest_bytes = manifest_path.read_bytes()
+    if _sha256_bytes(manifest_bytes) != fixture_config["digest"]:
+        raise EvaluationError(f"fixture manifest digest mismatch: {manifest_path}")
+    manifest = _load_yaml(manifest_path)
+    fixture_schema = json.loads(_schema_path("fixture-manifest.schema.json").read_text(encoding="utf-8"))
+    errors = sorted(
+        Draft202012Validator(fixture_schema, format_checker=FormatChecker()).iter_errors(manifest),
+        key=lambda item: list(item.path),
+    )
+    if errors:
+        raise EvaluationError(f"invalid fixture manifest: {errors[0].message}")
+    for sample in manifest["samples"]:
+        fixture_path = (manifest_path.parent / sample["path"]).resolve()
+        try:
+            fixture_path.relative_to(manifest_path.parent)
+        except ValueError as exc:
+            raise EvaluationError("fixture path must stay inside the manifest directory") from exc
+        try:
+            fixture_bytes = fixture_path.read_bytes()
+        except OSError as exc:
+            raise EvaluationError(f"fixture is unreadable: {fixture_path}: {exc}") from exc
+        if len(fixture_bytes) != sample["size_bytes"]:
+            raise EvaluationError(f"fixture size mismatch: {fixture_path}")
+        if hashlib.sha256(fixture_bytes).hexdigest() != sample["sha256"]:
+            raise EvaluationError(f"fixture digest mismatch: {fixture_path}")
 
 
 def _schema_path(name: str) -> Path:
@@ -99,6 +134,7 @@ def run_evaluation(
     errors = sorted(Draft202012Validator(schema).iter_errors(suite), key=lambda item: list(item.path))
     if errors:
         raise EvaluationError(f"invalid suite: {errors[0].message}")
+    _validate_fixtures(suite_path, suite.get("fixtures"))
     if expected_mode and suite["mode"] != expected_mode:
         raise EvaluationError(f"suite mode is {suite['mode']!r}, expected {expected_mode!r}")
     capability = suite["capability"]
@@ -176,6 +212,7 @@ def run_evaluation(
             "version": str(suite["version"]),
             "digest": _sha256_bytes(suite_bytes),
             "mode": suite["mode"],
+            **({"fixtures": suite["fixtures"]} if suite.get("fixtures") else {}),
         },
         "environment": {
             "os": platform.system().lower(),
