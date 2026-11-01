@@ -122,4 +122,3 @@ def evidence_summary(paths: Iterable[Path] | None = None) -> dict[str, Any]:
         "errors": errors,
         "discovery_errors": discovery_errors,
     }
-

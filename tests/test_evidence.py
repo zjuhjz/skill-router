@@ -112,4 +112,3 @@ def test_invalid_report_is_rejected_and_cli_returns_failure(skills_root, tmp_pat
     payload = json.loads(capsys.readouterr().out)
     assert payload["ok"] is False
     assert "not a valid date-time" in payload["errors"][0]
-
