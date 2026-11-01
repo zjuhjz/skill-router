@@ -72,12 +72,33 @@
         ],
         "additionalProperties": true
       }
+    },
+    "evaluation": {
+      "type": "object",
+      "properties": {
+        "ranking_metrics": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/rankingMetric" },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": true
     }
   },
   "additionalProperties": true,
   "$defs": {
     "jsonPointer": { "type": "string", "pattern": "^(?:/(?:[^~/]|~[01])*)*$" },
     "platformId": { "type": "string", "pattern": "^[a-z][a-z0-9_-]*$" },
-    "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+    "errorCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+    "rankingMetric": {
+      "type": "object",
+      "required": ["name", "statistic", "direction"],
+      "properties": {
+        "name": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]*$" },
+        "statistic": { "enum": ["mean", "p50", "p95"] },
+        "direction": { "enum": ["minimize", "maximize"] }
+      },
+      "additionalProperties": false
+    }
   }
 }

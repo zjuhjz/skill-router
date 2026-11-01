@@ -1101,6 +1101,7 @@ def describe_capability(capability: str) -> dict[str, Any]:
         "compliance": doc.get("compliance") or "",
         "input_schema": doc["input_schema"],
         "output_schema": doc["output_schema"],
+        "evaluation": doc.get("evaluation") or {},
         "examples": examples,
     }
 
@@ -1263,7 +1264,33 @@ def _quality_rank(item: dict) -> int:
     return 1
 
 
-def _evaluation_policy(options: dict, cfg: dict) -> dict[str, Any]:
+def _ranking_metrics(configured: dict, capability: str) -> tuple[list[dict[str, str]], str]:
+    profiles = configured.get("profiles") or {}
+    overridden = profiles.get(capability) if isinstance(profiles, dict) else None
+    if isinstance(overridden, dict):
+        raw_metrics = overridden.get("ranking_metrics") or []
+        source = "config"
+    elif isinstance(overridden, list):
+        raw_metrics = overridden
+        source = "config"
+    else:
+        name, raw_version = capability.split("@", 1)
+        doc = load_registry()["capabilities"].get((name, int(raw_version))) or {}
+        raw_metrics = (doc.get("evaluation") or {}).get("ranking_metrics") or []
+        source = "capability-spec"
+    metrics = []
+    for item in raw_metrics:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        statistic = str(item.get("statistic") or "mean")
+        direction = str(item.get("direction") or "minimize")
+        if name and statistic in {"mean", "p50", "p95"} and direction in {"minimize", "maximize"}:
+            metrics.append({"name": name, "statistic": statistic, "direction": direction})
+    return metrics, source
+
+
+def _evaluation_policy(options: dict, cfg: dict, capability: str) -> dict[str, Any]:
     configured = cfg.get("evaluation_policy") or {}
     if not isinstance(configured, dict):
         configured = {}
@@ -1274,6 +1301,7 @@ def _evaluation_policy(options: dict, cfg: dict) -> dict[str, Any]:
     aggregation = str(options.get("evidence_aggregation", configured.get("aggregation") or "conservative"))
     if aggregation not in {"conservative", "latest"}:
         aggregation = "conservative"
+    ranking_metrics, profile_source = _ranking_metrics(configured, capability)
 
     def nonnegative_float(value: object, default: float) -> float:
         try:
@@ -1311,6 +1339,8 @@ def _evaluation_policy(options: dict, cfg: dict) -> dict[str, Any]:
         "maximum_average_cost_usd": optional_limit(
             "maximum_average_cost_usd", "maximum_average_cost_usd"
         ),
+        "ranking_metrics": ranking_metrics,
+        "profile_source": profile_source,
     }
 
 
@@ -1321,7 +1351,7 @@ def _verified_timestamp(value: object) -> float:
         return 0.0
 
 
-def _aggregate_evidence(choices: list[dict], strategy: str) -> dict:
+def _aggregate_evidence(choices: list[dict], strategy: str, ranking_metrics: list[dict]) -> dict:
     if strategy == "latest":
         selected = max(choices, key=lambda view: _verified_timestamp(view["verified_at"]))
         view = copy.deepcopy(selected)
@@ -1345,6 +1375,26 @@ def _aggregate_evidence(choices: list[dict], strategy: str) -> dict:
         if item["results"].get("user_outcome_score") is not None
     ]
     results["user_outcome_score"] = min(outcomes) if outcomes else None
+    metrics = copy.deepcopy(results.get("metrics") or {})
+    for spec in ranking_metrics:
+        name, statistic, direction = spec["name"], spec["statistic"], spec["direction"]
+        values = []
+        samples = 0
+        for item in choices:
+            measured = (item["results"].get("metrics") or {}).get(name)
+            if not isinstance(measured, dict) or measured.get(statistic) is None:
+                values = []
+                break
+            values.append(float(measured[statistic]))
+            samples += int(measured.get("samples") or 0)
+        if not values:
+            metrics.pop(name, None)
+            continue
+        metric = dict(metrics.get(name) or {})
+        metric["samples"] = samples
+        metric[statistic] = max(values) if direction == "minimize" else min(values)
+        metrics[name] = metric
+    results["metrics"] = metrics
     weakest = min(choices, key=lambda item: _TRUST_SCORE.get(item["trust"]["level"], -1))["trust"]
     issuers = sorted({str(item["trust"]["issuer"]) for item in choices})
     view["trust"] = {
@@ -1419,7 +1469,7 @@ def _apply_evaluation_evidence(
     for item in runnable:
         choices = [view for candidate, view in pairs if candidate is item]
         if choices:
-            aggregated = _aggregate_evidence(choices, policy["aggregation"])
+            aggregated = _aggregate_evidence(choices, policy["aggregation"], policy["ranking_metrics"])
             rejected = _evidence_gate_reasons(aggregated, policy)
             if rejected:
                 item["evaluation_rejections"] = rejected
@@ -1437,6 +1487,27 @@ def _apply_evaluation_evidence(
             }
         )
         return context
+    active_metrics = []
+    for spec in policy["ranking_metrics"]:
+        measured_count = 0
+        for item in runnable:
+            view = item.get("evaluation")
+            metric = (view["results"].get("metrics") or {}).get(spec["name"]) if isinstance(view, dict) else None
+            if isinstance(metric, dict) and metric.get(spec["statistic"]) is not None:
+                measured_count += 1
+        if measured_count >= 2:
+            active_metrics.append(spec)
+    for item in runnable:
+        view = item.get("evaluation")
+        metric_rank = []
+        for spec in active_metrics:
+            metric = (view["results"].get("metrics") or {}).get(spec["name"]) if isinstance(view, dict) else None
+            if not isinstance(metric, dict) or metric.get(spec["statistic"]) is None:
+                metric_rank.append((1, 0.0))
+                continue
+            value = float(metric[spec["statistic"]])
+            metric_rank.append((0, value if spec["direction"] == "minimize" else -value))
+        item["evaluation_metric_rank"] = tuple(metric_rank)
     context.update(
         {
             "applied": True,
@@ -1452,6 +1523,11 @@ def _apply_evaluation_evidence(
                 "minimum_task_success_rate": policy["minimum_task_success_rate"],
                 "maximum_p95_latency_ms": policy["maximum_p95_latency_ms"],
                 "maximum_average_cost_usd": policy["maximum_average_cost_usd"],
+            },
+            "metric_profile": {
+                "source": policy["profile_source"],
+                "configured": policy["ranking_metrics"],
+                "active": active_metrics,
             },
         }
     )
@@ -1469,6 +1545,7 @@ def _evaluation_rank(item: dict) -> tuple:
         0,
         -float(results.get("task_success_rate") or 0),
         -float(results.get("execution_success_rate") or 0),
+        item.get("evaluation_metric_rank") or (),
         float(average_cost) if average_cost is not None else float("inf"),
         float(p95) if p95 is not None else float("inf"),
         -_TRUST_SCORE.get(view["trust"]["level"], 0),
@@ -1505,7 +1582,20 @@ def _routing_context(ranked: list[dict], evaluation: dict[str, Any], *, prefer: 
                 "trust": view["trust"],
                 "verified_at": view["verified_at"],
                 "report_count": view.get("report_count", 1),
+                "metrics": {},
             }
+            for spec in evaluation.get("metric_profile", {}).get("active", []):
+                metric = (results.get("metrics") or {}).get(spec["name"])
+                if isinstance(metric, dict) and metric.get(spec["statistic"]) is not None:
+                    value = metric[spec["statistic"]]
+                    evidence["metrics"][spec["name"]] = {
+                        "statistic": spec["statistic"],
+                        "direction": spec["direction"],
+                        "value": value,
+                    }
+                    reasons.append(
+                        f"metric {spec['name']}.{spec['statistic']}={value} {spec['direction']}"
+                    )
         rejected = item.get("evaluation_rejections") or []
         if rejected:
             reasons.append("evidence rejected: " + ",".join(str(reason) for reason in rejected))
@@ -1585,7 +1675,7 @@ def invoke(capability: str, data: dict | None = None, *, options: dict | None = 
     runnable, skipped, pending_confirm, discovery_errors, store = _select(
         full_name, platform, url, allow_paid=allow_paid, yes=yes
     )
-    policy = _evaluation_policy(options, cfg)
+    policy = _evaluation_policy(options, cfg, full_name)
     evidence_records, evidence_errors = load_evidence() if policy["enabled"] else ([], [])
     evaluation_context = _apply_evaluation_evidence(runnable, evidence_records, policy)
     ranked = _rank(runnable, prefer=str(prefer) if prefer else None)

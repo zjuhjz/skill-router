@@ -192,7 +192,14 @@ skillrouter evidence --report ./benchmark-results
     "aggregation": "conservative",
     "minimum_task_success_rate": 0.8,
     "maximum_p95_latency_ms": 5000,
-    "maximum_average_cost_usd": 0.05
+    "maximum_average_cost_usd": 0.05,
+    "profiles": {
+      "image.ocr@1": {
+        "ranking_metrics": [
+          {"name": "cer", "statistic": "mean", "direction": "minimize"}
+        ]
+      }
+    }
   }
 }
 ```
@@ -209,6 +216,8 @@ skillrouter invoke video.download --url "https://..." --use-evidence \
   --min-task-success 0.8 --max-p95-ms 5000 --max-cost-usd 0.05 \
   --evidence-aggregation conservative --yes
 ```
+
+Capability Contract 可以提供默认指标 Profile。目前 `image.ocr@1` 使用 CER 越低越好，`video.transcript@1` 优先比较 WER、可用时再比较 CER；只有至少两个候选都测得同一指标时该指标才进入排序。`evaluation_policy.profiles` 可以覆盖这些默认值。
 
 ## Windows
 

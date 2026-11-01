@@ -13,3 +13,8 @@ skillcall-spec validate --implementations ../../skills
 
 The current v0.4 snapshot contains `video.resolve@1`, `video.download@1`,
 `image.download@1`, `image.ocr@1`, and `video.transcript@1`.
+
+Capability contracts may declare ordered `evaluation.ranking_metrics` with a
+metric name, report statistic, and `minimize`/`maximize` direction. Routers can
+consume these profiles without hard-coding OCR, transcription, or other
+domain-specific quality semantics.

@@ -7,3 +7,8 @@ routing:
   file_field: /file
   file_platform: local
 output_rules: []
+evaluation:
+  ranking_metrics:
+    - name: cer
+      statistic: mean
+      direction: minimize

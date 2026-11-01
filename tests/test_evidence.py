@@ -5,7 +5,7 @@ from pathlib import Path
 
 from skillrouter.cli import main
 from skillrouter.discover import discover
-from skillrouter.engine import invoke, list_capabilities
+from skillrouter.engine import describe_capability, invoke, list_capabilities
 from skillrouter.evidence import evidence_summary
 from tests.fakes import make_skill
 
@@ -24,11 +24,13 @@ def _report(
     p95_latency_ms: float = 10,
     average_cost_usd: float | None = None,
     suite_digest: str = "b" * 64,
+    capability: str = "video.download@1",
+    metrics: dict | None = None,
 ) -> Path:
     report = {
         "schema": "skill-eval.report.v1",
         "subject": {"id": skill_id, "version": version, "digest": f"sha256:{digest}"},
-        "capability": "video.download@1",
+        "capability": capability,
         "suite": {
             "id": "test.video-download.offline",
             "version": "1.0.0",
@@ -44,7 +46,7 @@ def _report(
             "p95_latency_ms": p95_latency_ms,
             "average_cost_usd": average_cost_usd,
             "user_outcome_score": None,
-            "metrics": {},
+            "metrics": metrics or {},
         },
         "cases": [],
         "trust": {"level": "ci-attested", "issuer": "test-ci"},
@@ -381,3 +383,103 @@ def test_malformed_optional_policy_values_fall_back_to_safe_defaults(
     result = invoke("video.download", {"url": URL}, yes=True)
     assert result["served_by"]["skill"] == "zzz.higher"
     assert result["routing"]["evaluation"]["aggregation"] == "conservative"
+
+
+def test_capability_spec_metric_profile_ranks_ocr_by_cer(skills_root, tmp_path, monkeypatch):
+    output = {"language": "en", "text": "SKILLCALL OCR", "blocks": []}
+    make_skill(
+        skills_root,
+        "aaa.high-cer",
+        {"action": "ok", "output": output},
+        capability="image.ocr@1",
+        platforms=["local"],
+    )
+    make_skill(
+        skills_root,
+        "zzz.low-cer",
+        {"action": "ok", "output": output},
+        capability="image.ocr@1",
+        platforms=["local"],
+    )
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    for skill_id, cer in (("aaa.high-cer", 0.2), ("zzz.low-cer", 0.05)):
+        skill = skills[skill_id]
+        _report(
+            reports / f"{skill_id}.json",
+            skill_id,
+            skill.version,
+            skill.content_hash,
+            capability="image.ocr@1",
+            metrics={"cer": {"samples": 3, "mean": cer, "p50": cer, "p95": cer}},
+        )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+
+    described = describe_capability("image.ocr@1")
+    assert described["evaluation"]["ranking_metrics"][0] == {
+        "name": "cer",
+        "statistic": "mean",
+        "direction": "minimize",
+    }
+    result = invoke(
+        "image.ocr",
+        {"file": "fixture.png", "language": "en"},
+        options={"use_evidence": True},
+        yes=True,
+    )
+    assert result["served_by"]["skill"] == "zzz.low-cer"
+    profile = result["routing"]["evaluation"]["metric_profile"]
+    assert profile["source"] == "capability-spec"
+    assert profile["active"][0]["name"] == "cer"
+    assert result["routing"]["candidates"][0]["evidence"]["metrics"]["cer"]["value"] == 0.05
+
+
+def test_config_can_override_capability_metric_profile(skills_root, isolate_router, tmp_path, monkeypatch):
+    make_skill(skills_root, "aaa.low-score", {"action": "ok", "id": "1"})
+    make_skill(skills_root, "zzz.high-score", {"action": "ok", "id": "2"})
+    skills = {skill.id: skill for skill in discover()[0]}
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    for skill_id, score in (("aaa.low-score", 0.2), ("zzz.high-score", 0.9)):
+        skill = skills[skill_id]
+        _report(
+            reports / f"{skill_id}.json",
+            skill_id,
+            skill.version,
+            skill.content_hash,
+            metrics={
+                "quality_score": {
+                    "samples": 1,
+                    "mean": score,
+                    "p50": score,
+                    "p95": score,
+                }
+            },
+        )
+    monkeypatch.setenv("SKILLROUTER_EVAL_REPORTS", str(reports))
+    (isolate_router / "config.json").write_text(
+        json.dumps(
+            {
+                "evaluation_policy": {
+                    "enabled": True,
+                    "profiles": {
+                        "video.download@1": {
+                            "ranking_metrics": [
+                                {
+                                    "name": "quality_score",
+                                    "statistic": "mean",
+                                    "direction": "maximize",
+                                }
+                            ]
+                        }
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = invoke("video.download", {"url": URL}, yes=True)
+    assert result["served_by"]["skill"] == "zzz.high-score"
+    assert result["routing"]["evaluation"]["metric_profile"]["source"] == "config"

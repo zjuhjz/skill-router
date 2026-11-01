@@ -182,7 +182,7 @@ remote_agent
 
 - Python：3.12.16，`.venv`。
 - `pip check`：无依赖冲突。
-- Router/集成非 live 测试：96 passed、1 skipped；8 个 live 测试按默认配置未运行。
+- Router/集成非 live 测试：98 passed、1 skipped；8 个 live 测试按默认配置未运行。
 - 独立包测试：20 passed；Spec Conformance 覆盖 5 个 Capability、11 个示例，Router 的 10 个 Manifest/19 个 Provision 和 Eval 的 2 个示例 Implementation/2 个 Provision 分别校验。
 - `capability-spec`、`skill-eval`、`skill-router` 均已成功构建 wheel；前两个同时验证了 sdist。
 
@@ -712,7 +712,7 @@ skill-eval run ./skills/faster-whisper \
 
 ### 第 7～8 周：Router 接入 Eval
 
-状态：**进行中**。Router 已完成 Eval Report Schema 内置、配置/环境变量/CLI 加载、严格适用性检查和 `list` 证据展示；默认关闭的 Eval-aware Policy 只比较同一 Offline Suite Digest 下至少两个有效候选，并在成本、覆盖和 Runtime Health 之后按 Task/Execution Success、平均成本与 P95 延迟排序。Policy 已支持最低质量、最高延迟、最高成本软门槛，以及跨环境 `conservative`/`latest` 聚合；被门槛降级的候选仍保留为 fallback。无法比较时自动回退原排序；每次调用返回策略、候选顺序、Evidence 摘要、选择理由和 fallback 状态。下一步用正式多实现 Benchmark 验证策略，并增加按 Capability 定义的指标 Profile。
+状态：**进行中**。Router 已完成 Eval Report Schema 内置、配置/环境变量/CLI 加载、严格适用性检查和 `list` 证据展示；默认关闭的 Eval-aware Policy 只比较同一 Offline Suite Digest 下至少两个有效候选，并在成本、覆盖和 Runtime Health 之后按 Task/Execution Success、领域指标、平均成本与 P95 延迟排序。Policy 已支持最低质量、最高延迟、最高成本软门槛，以及跨环境 `conservative`/`latest` 聚合；被门槛降级的候选仍保留为 fallback。Capability Contract 可声明有序的领域指标 Profile，当前 OCR 使用 CER，转写优先 WER 并可比较 CER，Router 配置可以覆盖。无法比较时自动回退原排序；每次调用返回策略、候选顺序、Evidence 摘要、选择理由和 fallback 状态。下一步用正式多实现 Benchmark 验证策略并补齐更多 Capability Profile。
 
 目标：
 
@@ -886,7 +886,7 @@ skill-router    30%
 3. 为 `image.ocr` 增加许可证清晰的中文、噪声和多块阅读顺序 Fixture，并在 CI 中复跑已完成的 Tesseract/PaddleOCR 对比报告。
 4. 用 `faster-whisper` 和 `gemini-asr` 运行首个转写 Benchmark；托管模型继续使用 BYOK。
 5. 基于已验证的 Composite Action 增加 README Badge 与独立示例项目（已完成），下一步准备版本发布说明和外部仓库接入示例。
-6. 为不同 Capability 定义可选的指标 Profile，避免用同一质量指标解释 OCR、转写和下载。
+6. 为更多 Capability 定义可选指标 Profile，并根据正式 Benchmark 调整 Profile 顺序与门槛。
 7. 用更多正式 Benchmark 证据验证 Eval-aware Ranking；Evaluation Evidence 与 Runtime Health 继续保持独立。
 
 ## 17. 给后续 AI 会话的工作指令

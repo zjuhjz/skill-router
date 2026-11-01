@@ -10,3 +10,11 @@ routing:
   file_platform: local
   extract_url_from_text: true
 output_rules: []
+evaluation:
+  ranking_metrics:
+    - name: wer
+      statistic: mean
+      direction: minimize
+    - name: cer
+      statistic: mean
+      direction: minimize
